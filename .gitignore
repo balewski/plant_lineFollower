@@ -1,0 +1,16 @@
+# Temporary and build output directories
+tmp/
+**/tmp/
+
+# FreeCAD backups
+*.FCBak
+*.FCBak[0-9]*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
