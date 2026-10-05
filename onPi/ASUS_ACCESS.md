@@ -11,4 +11,6 @@ The Pi (`wlan0`, `10.0.0.149`) is on the ASUS at `10.0.0.1`, network `10.0.0.0/2
 
 `configure_wifi.sh`, `wifi_fix.sh`, and `wifi_diag.py` stay on the Pi in `/home/pi/plant_lineFolower/config/`.
 
+Logs from these checks are written under `/home/pi/plant_lineFolower/out/`.
+
 A tighter packet filter is drafted in `onPi/firewall/nftables.conf`. It is not installed on the Pi.
