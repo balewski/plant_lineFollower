@@ -26,9 +26,9 @@ def main():
     parser.add_argument("--seconds", type=nonnegative, default=30,
                         help="watch for changes after the initial snapshot (default: 30)")
     args = parser.parse_args()
-    root = Path(__file__).resolve().parent / "robot0"
+    root = Path(__file__).resolve().parent.parent / "out"
     stamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
-    out = root / "out" / "raspberry_pi" / ("wifi_diag_" + stamp + "_" + str(os.getpid()))
+    out = root / ("wifi_diag_" + stamp + "_" + str(os.getpid()))
     out.mkdir(parents=True)
     report = out / "report.txt"
     print("Saving diagnostics to:", out, flush=True)

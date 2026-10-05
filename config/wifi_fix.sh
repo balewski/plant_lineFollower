@@ -3,6 +3,7 @@
 set -u
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 BASE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd -- "$BASE_DIR/.." && pwd)"
 IFACE=wlan0
 PROFILE=robot-wifi
 USB_DRIVER=""
@@ -56,12 +57,12 @@ PYSYNC
 
 usage() {
     cat <<'HELP'
-Usage: ~/wifi_fix.sh [--check|--help]
+Usage: ~/plant_lineFolower/config/wifi_fix.sh [--check|--help]
 Run from the Pi console after Wi-Fi fails. Requests sudo if needed.
 Saves diagnostics, then tries reconnect, radio restart, and USB driver rebind.
 Stops after Wi-Fi has an IPv4 address and can ping its gateway.
 --check  Check prerequisites and current connection without changing anything.
-Logs: ~/robot0/out/raspberry_pi/wifi_fix_*/
+Logs: ~/plant_lineFolower/out/wifi_fix_*/
 HELP
 }
 
@@ -211,7 +212,7 @@ main() {
     fi
     exec 9>/run/lock/robot-wifi-fix.lock
     flock -n 9 || { echo "Another Wi-Fi recovery is running."; return 1; }
-    logdir="$BASE_DIR/robot0/out/raspberry_pi/wifi_fix_$(date +%Y%m%d_%H%M%S)_$$"
+    logdir="$REPO_DIR/out/wifi_fix_$(date +%Y%m%d_%H%M%S)_$$"
     mkdir -p "$logdir" || return 1
     # Make resulting recovery logs accessible to the owner of this home directory.
     owner="$(stat -c %u:%g "$BASE_DIR")"

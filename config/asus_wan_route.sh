@@ -1,15 +1,16 @@
 #!/bin/bash
 # Use the ASUS as the default gateway only while it can reach the public internet.
 # Otherwise keep Wi-Fi on the local LAN (10.0.0.0/24) with no default route.
-# Each run appends to wan_route.log in this directory.
+# Each run appends to out/wan_route.log.
 set -u
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 IFACE=wlan0
 GW=10.0.0.1
 BASE=/home/pi/plant_lineFolower
-SCRIPT=$BASE/asus_wan_route.sh
-LOG=$BASE/wan_route.log
+SCRIPT=$BASE/config/asus_wan_route.sh
+LOG=$BASE/out/wan_route.log
+mkdir -p -- "$BASE/out"
 
 note() {
     printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG"
@@ -36,7 +37,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/pi/plant_lineFolower/asus_wan_route.sh
+ExecStart=/home/pi/plant_lineFolower/config/asus_wan_route.sh
 UNIT
     cat > /etc/systemd/system/asus-wan-route.timer << 'UNIT'
 [Unit]
@@ -54,7 +55,7 @@ UNIT
 #!/bin/sh
 [ "$1" = "wlan0" ] || exit 0
 case "$2" in
-    up|dhcp4-change) /home/pi/plant_lineFolower/asus_wan_route.sh ;;
+    up|dhcp4-change) /home/pi/plant_lineFolower/config/asus_wan_route.sh ;;
 esac
 UNIT
     chmod 755 /etc/NetworkManager/dispatcher.d/50-asus-wan-route
@@ -76,6 +77,23 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+legacy_log=$BASE/wan_route.log
+if [ -f "$legacy_log" ]; then
+    if [ -f "$LOG" ]; then
+        tmp="$(mktemp)"
+        cat "$legacy_log" "$LOG" > "$tmp"
+        mv "$tmp" "$LOG"
+        rm -f "$legacy_log"
+    else
+        mv "$legacy_log" "$LOG"
+    fi
+    chmod 644 "$LOG"
+fi
+if grep -qx "ExecStart=$BASE/asus_wan_route.sh" /etc/systemd/system/asus-wan-route.service 2>/dev/null; then
+    install_units
+    rm -f "$BASE/asus_wan_route.sh"
+fi
+
 exec 9>/run/lock/asus-wan-route.lock
 if ! flock -n 9; then
     note "asus wan: another check is running."
@@ -95,7 +113,18 @@ apply_profile() {
 
 snapshot
 if ! ip -4 addr show dev "$IFACE" 2>/dev/null | grep -q 'inet '; then
-    note "asus wan: $IFACE has no IPv4 address; routes unchanged."
+    linkline="$(ip -br link show "$IFACE" 2>/dev/null || true)"
+    if [[ "$linkline" == *NO-CARRIER* || "$linkline" == *" DOWN "* ]]; then
+        note "asus wan: $IFACE lost carrier; bringing asus-robot up."
+        if timeout 40 nmcli --wait 30 connection up id asus-robot ifname "$IFACE"; then
+            note "asus wan: asus-robot is up."
+        else
+            note "asus wan: bringing asus-robot up failed."
+        fi
+        snapshot
+    else
+        note "asus wan: $IFACE has no IPv4 address; routes unchanged."
+    fi
     finish
     exit 0
 fi
