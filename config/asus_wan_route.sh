@@ -29,6 +29,45 @@ finish() {
     sync
 }
 
+save_kernel() {
+    local tag="$1" dest
+    [ -e "/run/asus-wan-kernel-$tag" ] && return 0
+    dest="$BASE/out/kernel_$(date '+%Y%m%d_%H%M%S')_$tag.log"
+    {
+        echo "saved $(date '+%Y-%m-%d %H:%M:%S') tag=$tag"
+        echo "boot $(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)"
+        echo "===== journalctl -b -k ====="
+        timeout 20 journalctl -b -k --no-pager -o short-iso || true
+        echo "===== dmesg ====="
+        timeout 10 dmesg --ctime || true
+    } > "$dest" 2>&1
+    chmod 644 "$dest" 2>/dev/null || true
+    sync
+    : > "/run/asus-wan-kernel-$tag"
+    note "asus wan: saved kernel log $dest"
+}
+
+keep_kernel_journal() {
+    local drop=/etc/systemd/journald.conf.d/60-keep-kernel.conf
+    if [ ! -f "$drop" ]; then
+        mkdir -p /etc/systemd/journald.conf.d
+        cat > "$drop" << 'EOF'
+[Journal]
+Storage=persistent
+SystemMaxUse=50M
+EOF
+        if systemctl restart systemd-journald; then
+            note "asus wan: kernel journal will be kept across reboot."
+        else
+            note "asus wan: could not restart systemd-journald."
+        fi
+    fi
+    if ! find /var/log/journal -name system.journal -print -quit | grep -q .; then
+        journalctl --flush || true
+        note "asus wan: flushed kernel journal to /var/log/journal."
+    fi
+}
+
 install_units() {
     cat > /etc/systemd/system/asus-wan-route.service << 'UNIT'
 [Unit]
@@ -101,6 +140,8 @@ if ! flock -n 9; then
     exit 0
 fi
 
+keep_kernel_journal
+
 apply_profile() {
     local want="$1" profile current
     profile="$(nmcli -g GENERAL.CONNECTION device show "$IFACE" 2>/dev/null || true)"
@@ -116,10 +157,12 @@ if ! ip -4 addr show dev "$IFACE" 2>/dev/null | grep -q 'inet '; then
     linkline="$(ip -br link show "$IFACE" 2>/dev/null || true)"
     if [[ "$linkline" == *NO-CARRIER* || "$linkline" == *" DOWN "* ]]; then
         note "asus wan: $IFACE lost carrier; bringing asus-robot up."
+        save_kernel drop
         if timeout 40 nmcli --wait 30 connection up id asus-robot ifname "$IFACE"; then
             note "asus wan: asus-robot is up."
         else
             note "asus wan: bringing asus-robot up failed."
+            save_kernel retry-failed
         fi
         snapshot
     else
