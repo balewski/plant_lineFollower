@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Blink a grounded LED on physical header pin 18 (BCM GPIO24).
+"""1 Blink a grounded LED on physical header pin 18 (BCM GPIO24).
 
 Wiring: pin 18 -> 5 kohm resistor -> LED anode; LED cathode -> Pi GND.
 Requires the installed gpiod v2 Python binding and access to /dev/gpiochip0.
