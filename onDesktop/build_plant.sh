@@ -11,7 +11,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --help|-h)
-            echo "build_plant.sh [--flash] [--pi 10.0.0.149]"
+            echo "build_plant.sh [--flash] [--pi 10.0.0.20]"
             echo "Use onDesktop/makeBin or onDesktop/updateBin."
             exit 0
             ;;
