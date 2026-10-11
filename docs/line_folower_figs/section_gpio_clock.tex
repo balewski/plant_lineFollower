@@ -24,7 +24,7 @@ One default \texttt{runClocksCalib} run, 100 pairs, was taken with the robot idl
 
 \begin{table}[H]
 \centering
-\caption{Mac--Pi corrected round trip and offset half-width, in milliseconds, from \path{config/clock_calib.json} on October 11, 2026. Each half-width is half of that probe's corrected round trip. These are single-probe bounds. A robot run uses only the Wi-Fi half-width.}
+\caption{Mac--Pi corrected round trip and offset half-width, in milliseconds, from \protect\path{config/clock_calib.json} on October 11, 2026. Each half-width is half of that probe's corrected round trip. These are single-probe bounds. A robot run uses only the Wi-Fi half-width.}
 \label{tab:clock-delay-current}
 \begin{tabular}{lrrrr}
 \toprule
@@ -274,7 +274,7 @@ The padded job ended after 4.045\,s when the 100\,ms freshness safeguard expired
 The current measurement programs are C++17: \path{lineFollowerDistributed/clock_probe.cpp} on both machines and \path{gpio_clock.cpp} on the Pi, launched by \texttt{onDesktop/runClocksCalib}, which saves only the summary in Section~\ref{sec:clock-method}. \path{controller.cpp} and \path{operator.cpp} run the robot and do not collect this clock delay. Teensy uses the shared Arduino C++ firmware described above. These implementations use direct GPIO/UART/socket interfaces and avoid Python interpreter and garbage-collection work in the timing path. C++ does not eliminate OS scheduling or Wi-Fi delays. The four recordings and figures below are stale September 27 results; the current command does not write those archives.
 \end{sloppypar}
 
-Offline Python scripts from the earlier Desktop package join sample/command identities and timestamps: \path{prepare_stats_video.py}, \path{clock_alignment.py} and \path{integrated_clock_analysis.py}. The resulting per-cycle \path{timing_cycles.csv} contains the directional estimates, their bounds, compute time, round trip and spare. Swift renders the telemetry video; it does not acquire control-loop timestamps.
+Offline Python scripts from the earlier Desktop package join sample/command identities and timestamps: \path{prepare_stats_video.py}, \path{clock_alignment.py} and \path{integrated_clock_analysis.py}. The resulting per-cycle \path{timing_cycles.csv} contains the directional estimates, their bounds, compute time, round trip and spare. Those scripts render the September telemetry movies. The current recording is Appendix~\ref{app:telemetry-video}; its Swift renderer draws the banner and does not acquire control-loop timestamps.
 
 The plotting script \path{docs/tools/plot_desktop_clock.py} uses Python's standard library to read the archived JSON, writes raw derived samples and histogram bins, and generates PGFPlots sources. Its default input is the sibling \path{2026_lineFollowerOperator/} directory; an alternate package root can be passed as an argument. Source paths and SHA-256 hashes are saved in \path{docs/figures/desktop_clock/sources.json}. The four input recordings under the operator's \path{out/} are:
 \begin{itemize}
