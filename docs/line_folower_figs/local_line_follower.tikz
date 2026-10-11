@@ -1,0 +1,12 @@
+\begin{tikzpicture}[font=\small,>=stealth,
+ block/.style={draw,thick,rounded corners,align=center,text width=5.2cm,minimum height=1.1cm},
+ flowarrow/.style={->,thick},note/.style={font=\scriptsize,fill=white,align=center}]
+\node[block,fill=green!8] (adc) at (0,0) {Teensy: ADC3\\A11 / A12 / A13, raw 10-bit};
+\node[block,fill=blue!7] (interpret) at (8,0) {Pi: detect tape, update deadband\\Normalize; test B--A and B--C};
+\node[block,fill=blue!7] (decide) at (8,-2.6) {Pi: compute signed left/right PWM\\Apply configured wiring polarity};
+\node[block,fill=green!8] (motor) at (0,-2.6) {Teensy: MOTORS or STOPALL\\20 kHz PWM; 750 ms watchdog};
+\draw[flowarrow] (adc) -- node[note,above] {UART reply} (interpret);
+\draw[flowarrow] (interpret) -- (decide);
+\draw[flowarrow] (decide) -- node[note,above] {UART command} (motor);
+\draw[flowarrow] (motor) -- node[note,left] {OK; Pi waits until\\next target tick} (adc);
+\end{tikzpicture}

@@ -1,0 +1,52 @@
+% Three sensor modules with separate common-ground symbols.
+\begin{circuitikz}[american,font=\small,
+  logic/.style={draw=blue!65!black,fill=blue!5,thick},
+  powerwire/.style={draw=red!75!black,very thick,>=stealth},
+  signalwire/.style={draw=blue!65!black,thick},
+  groundwire/.style={draw=black!80,thick},
+  pintext/.style={font=\scriptsize},
+  smallnote/.style={font=\scriptsize,align=center}]
+\draw[logic] (0.6,10.2) rectangle (4.2,11.5);
+\node[smallnote] at (2.4,10.85) {Pi Model B Plus\\UART control};
+\draw[signalwire,<->] (2.4,10.2) -- (2.4,9.0);
+\node[smallnote,anchor=west] at (2.6,9.65) {UART TX/RX\\3.3 V signals};
+% Same shared 5 V buck as in the motor diagram; all loads connect in parallel.
+\draw[logic,fill=orange!8] (6,10.2) rectangle (9,11.5);
+\node[smallnote] at (7.5,10.85) {Shared logic buck\\OUT: 5.0 V};
+\draw[powerwire,->] (7.5,12.15) -- (7.5,11.5);
+\node[smallnote] at (7.5,12.5) {Shared 2S battery\\(see Fig.~\ref{fig:pi-teensy-tb6612-wiring})};
+% One OUT+ junction divides into Pi, Teensy and sensor-supply branches.
+\draw[powerwire] (7.5,10.2) -- (7.5,9.45) -- (5.25,9.45) node[circ] {};
+\node[pintext,anchor=west] at (7.65,9.9) {OUT+ 5 V};
+\draw[powerwire,->] (5.25,9.45) -- (5.25,10.85) -- (4.2,10.85);
+\draw[powerwire,->] (5.25,9.45) -- (4.8,9.45) -- (4.8,8.45) -- (4.5,8.45);
+\draw[powerwire] (5.25,9.45) -- (5.25,8.9) -- (6.5,8.9) -- (6.5,2.4);
+\draw[groundwire] (9,10.55) -- (9.5,10.55) -- (9.5,10.2) node[ground] {};
+\draw[groundwire] (0.6,10.85) -- (0.05,10.85) -- (0.05,9.65) node[ground] {};
+\draw[logic] (0.3,0.6) rectangle (4.5,9.0);
+\node[font=\bfseries] at (2.4,8.6) {Teensy 4.1};
+\node[pintext,anchor=east] at (4.35,8.45) {Vin};
+\node[smallnote] at (2.15,7.1) {Vin: shared 5 V buck\\USB power bridge cut};
+\node[smallnote] at (2.15,5.9) {ADC: 10-bit raw counts\\0--1023};
+\node[smallnote] at (2.15,5.15) {ADC inputs: 0--3.3 V only\\Check AO voltage at 5 V VCC.};
+\node[smallnote] at (2.15,3.55) {Pins 3--9 remain assigned\\to the TB6612FNG.\\Sensor A/B/C names are\\not ADC channel numbers.};
+% Module envelopes and the three separate analog outputs.
+\foreach \top/\letter/\gpio/\adc in {9/A/25/A11,6/B/26/A12,3/C/27/A13} {
+  \draw[logic,fill=green!5] (11.2,\top-2.4) rectangle (14.8,\top);
+  \node[font=\bfseries] at (13,\top-0.25) {TCRT5000 \letter};
+  \node[pintext,anchor=west] at (11.35,\top-0.6) {VCC};
+  \node[pintext,anchor=west] at (11.35,\top-1.2) {AO};
+  \node[pintext,anchor=west] at (11.35,\top-1.8) {GND};
+  \node[pintext,anchor=east] at (14.65,\top-1.2) {DO};
+  \draw[thin] (14.8,\top-1.2) -- (15.25,\top-1.2) node[ocirc] {};
+  \node[pintext,anchor=west] at (15.4,\top-1.2) {NC};
+  \node[pintext,anchor=east] at (4.35,\top-1.2) {\gpio\ / \adc};
+  \draw[signalwire,<-] (4.5,\top-1.2) -- (11.2,\top-1.2);
+  \draw[powerwire,->] (6.5,\top-0.6) node[circ] {} -- (11.2,\top-0.6);
+  \draw[groundwire] (11.2,\top-1.8) -- (10.6,\top-1.8) -- (10.6,\top-2.15) node[ground] {};
+}
+\node[smallnote,red!75!black] at (8.7,8.95) {Shared 5 V sensor supply};
+\node[pintext] at (2.4,0.95) {GND};
+\draw[groundwire] (2.4,0.6) -- (2.4,0.1) node[ground] {};
+\node[smallnote,align=left,anchor=west] at (10.1,11.1) {Red: 5 V power from buck.\\Blue: UART / analog signals.\\Ground symbols share common GND.};
+\end{circuitikz}

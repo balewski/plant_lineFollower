@@ -1,0 +1,18 @@
+\documentclass[tikz,border=4pt]{standalone}
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.18}
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1,horizontal sep=1.5cm},
+width=8.1cm,height=5.7cm,ybar,/pgf/bar width=3pt,ymode=log,log origin=infty,
+ymin=.5,ymax=150,ytick={1,10,100},yticklabels={1,10,100},
+xlabel={Corrected probe round trip (ms)},ylabel={Probes per bin},
+tick label style={font=\small},label style={font=\small},title style={font=\small},grid=major,grid style={gray!20}]
+\nextgroupplot[title={Desktop--Pi: 100 probes, 0.25 ms bins},xmin=0,xmax=8,xtick={0,2,4,6,8}]
+\addplot[fill=blue!55,draw=blue!80!black] table[x=center_ms,y=count,col sep=comma]{network_rtt.csv};
+\nextgroupplot[title={Desktop--Teensy: 100 probes, 0.5 ms bins},xmin=10,xmax=46,xtick={10,20,30,40}]
+\addplot[fill=orange!60,draw=orange!80!black] table[x=center_ms,y=count,col sep=comma]{end_to_end_rtt.csv};
+\end{groupplot}
+\end{tikzpicture}
+\end{document}

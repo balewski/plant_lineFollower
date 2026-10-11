@@ -1,0 +1,24 @@
+\documentclass[tikz,border=4pt]{standalone}
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.18}
+\begin{document}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1,horizontal sep=1.0cm},
+width=5.7cm,height=5.7cm,ybar,ymode=log,log origin=infty,
+ymin=.1,ymax=100,xmin=0,xmax=46,xtick={0,10,20,30,40},ytick={.1,1,10,100},yticklabels={0.1,1,10,100},
+xlabel={Latency (ms)},ylabel={Cycles per bin (\%)},
+tick label style={font=\small},label style={font=\small},title style={font=\small},grid=major,grid style={gray!20},legend style={font=\scriptsize,at={(.97,.97)},anchor=north east}]
+\nextgroupplot[title={Teensy to Desktop (estimate)}]
+\addplot[bar shift=-1.2pt,bar width=2.2pt,fill=blue!60,draw=blue!80!black] table[x=center_ms,y=percent,col sep=comma]{original_outbound_ms.csv};
+\addplot[bar shift=1.2pt,bar width=2.2pt,fill=orange!60,draw=orange!80!black] table[x=center_ms,y=percent,col sep=comma]{padded_outbound_ms.csv};
+\legend{Original ($n=392$),Padded ($n=186$)}
+\nextgroupplot[title={Desktop to Teensy (estimate)},ylabel={}]
+\addplot[bar shift=-1.2pt,bar width=2.2pt,fill=blue!60,draw=blue!80!black] table[x=center_ms,y=percent,col sep=comma]{original_return_ms.csv};
+\addplot[bar shift=1.2pt,bar width=2.2pt,fill=orange!60,draw=orange!80!black] table[x=center_ms,y=percent,col sep=comma]{padded_return_ms.csv};
+\nextgroupplot[title={Sample to target receipt},ylabel={}]
+\addplot[bar shift=-1.2pt,bar width=2.2pt,fill=blue!60,draw=blue!80!black] table[x=center_ms,y=percent,col sep=comma]{original_loop_ms.csv};
+\addplot[bar shift=1.2pt,bar width=2.2pt,fill=orange!60,draw=orange!80!black] table[x=center_ms,y=percent,col sep=comma]{padded_loop_ms.csv};
+\end{groupplot}
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,60 @@
+\subsection{Available Cycle Time and Smaller-Message Options}
+\label{sec:timing-budget}
+\subsubsection{What ``Free'' Time Is Supported by the Measurements?}
+For the existing robot, the defensible quantity is \emph{spare time at target receipt}: $S=1000/f-(T_r-T_s)$ in ms. Both timestamps are on Teensy, so Desktop clock-offset uncertainty does not enter this subtraction. Better alignment improves the separation into forward and reverse delay; it neither creates more spare time nor changes the already measured round trip. The measurements stop at complete target receipt, before motor-output application. They therefore do not establish CPU idle time or an exact interval from motor application to the next ADC tick.
+
+\begin{table}[H]
+\centering\small
+\caption{Observed spare time in the original unpadded moving runs. Quartiles are in ms. Late means the target arrived after the next nominal sample deadline; the denominator includes only complete matched cycles.}
+\label{tab:spare-budget}
+\input{figures/pi_desktop_clock/spare_table.tex}
+\end{table}
+
+The most representative measured margins are therefore approximately \textbf{32\,ms at 25\,Hz, 12\,ms at 50\,Hz and 1.7\,ms at 100\,Hz}. The 100\,Hz run had 156/770 matched targets arrive late, about 20\%; a positive median is not a guaranteed computational budget. At 50\,Hz, 10/392 were late (2.6\%); none of the 198 matched 25\,Hz cycles were late. These short runs at different track positions do not prove long-term deadline reliability. Extra Desktop computation consumes approximately the same amount of spare time per cycle if other delays stay unchanged; it can also change queuing. New compute workloads must be checked against tails, not just these medians.
+
+\subsubsection{ADC and Motor Resolution}
+The current ADC already produces values in 0--1023, i.e. 10 useful bits per channel. Three losslessly packed channels need 30 bits, fitting in 4 bytes instead of the current six binary UDP bytes. Dropping three LSBs gives $q=a\mathbin{\gg}3$ in 0--127: seven bits/channel, or 21 bits in 3 bytes. Relative to lossless packing, this sacrifices precision to save only \emph{one additional byte per triplet}. Truncation reconstructed as $8q$ underestimates by 0--7 ADC counts; using the bin midpoint removes that systematic downward reconstruction choice but still leaves quantization error. The light thresholds and noise calibration must use consistent units. Recorded steering has not yet been replayed or driven with this quantization, so its effect near tape-detection thresholds is unverified.
+
+Motor values are PWM targets, not measured speeds. The existing full range $-255$ to $+255$ needs nine bits per wheel, or 18 bits for both, packable into 3 bytes without loss. Six bits of \emph{magnitude} plus a direction bit gives 0--63 magnitudes in each direction, fitting each wheel in one byte. Mapping magnitude to the configured PWM maximum $M$ gives a step of about $M/63$: about 4 PWM counts at $M=255$, or 2 at $M=128$. Six bits total, including sign, would be coarser. It is plausible that six magnitude bits suffice for this toy controller, but these data do not establish the minimum usable resolution; low-speed starting and tight-turn behavior need checking. Again, reduced precision saves only one byte beyond losslessly packing both targets. Exact zero and the configured PWM limit must be preserved.
+
+\subsubsection{Headers and Status}
+The present LAN application header is \textbf{24 bytes (192 bits)}, not 24 or 26 bits. It contains 4-byte magic, 1-byte version, 1-byte type, 2-byte body length, 8-byte session and 8-byte sender sequence. There is no requirement for a 26-bit sensor header. A 24--26-bit total header cannot retain the existing independent session and sequence fields; reducing it that far changes the stale-command and reset-detection design. The serial ASCII records do not use this LAN header at all.
+
+A possible LAN revision could use a 12-byte application header: version/type 1 byte, flags 1 byte, length 2 bytes, job token 4 bytes and sequence 4 bytes. The job token must be newly negotiated and bound to the active peer, with explicit rollover and old-session rejection rules; it is not authentication. A shorter session field has a higher collision risk than the current 64-bit field. UDP already provides datagram boundaries, but its \href{https://www.rfc-editor.org/rfc/rfc768}{own transport header} and the IP/link headers remain. Application compression cannot remove those headers, Wi-Fi contention or OS scheduling latency.
+
+With that header and job-relative timestamps, a compact lossless SENSOR could occupy 23 bytes: header 12, sample-start time 4, ADC duration 2, packed ADCs 4 and diagnostic flags 1. Its header sequence identifies the sample. A COMMAND could occupy 19 bytes: header 12, source sample reference 4 and packed targets 3. Pi-side receipt timestamps and full counters would be kept in local logs for later joining. This illustrative 42-byte sensor/command pair replaces 118 bytes, saving 76 application bytes per cycle, or 1.90, 3.80 and 7.60\,kB/s at 25, 50 and 100\,Hz. These are design budgets, not implemented packets; clock-epoch, sequence and log-joining rules must change together.
+
+STATUS can separate essential feedback from verbose diagnostics. Keep immediate stop/fault reporting and command receipt confirmation; send cumulative counters and repeated configuration at a lower rate, for example 5\,Hz. An illustrative 25-byte compact UDP status is a 12-byte header plus acknowledged sample/command reference (4), Teensy receipt time relative to the job (4), applied target pair (3), and state/flags (2). It retains the receipt timestamp needed for timing. Pi-local dispatch times and other diagnostics can remain in the Pi log and be joined offline by ID. A normal receipt report may be piggybacked on subsequent sensor traffic only if its added delay is acceptable; waiting for the next sample can delay that report by up to 10, 20 or 40\,ms. Critical stop/fault feedback should not wait. These changes reduce telemetry traffic but must not erase command-loss accounting or make feedback appear instantaneous.
+
+Reducing each per-command STATUS from 75 to 25 bytes saves another 1.25, 2.50 and 5.00\,kB/s at those three nominal rates, before adding the slower diagnostic stream. This is a bandwidth saving; the ACK/status return path is outside the sample-to-target-receipt definition of round trip, so it cannot simply be subtracted from that measured latency.
+
+\subsubsection{Estimated Communication Savings: Binary UART First}
+The clearest near-term saving is a binary UART protocol, because every removed byte saves $10/115200$\,s $=0.0868$\,ms of serialization. The padded-message experiment already supports this mechanism. As a concrete \emph{unimplemented} size budget, consider a fixed-length serial frame with 2-byte sync marker, 1-byte type/version, 4-byte job token, 2-byte sample sequence and 2-byte CRC: 11 bytes of common framing/check fields. A single command per source sample uses that sample sequence as its reference.
+
+\begin{table}[H]
+\centering\small
+\caption{Illustrative binary UART sizes, including framing and CRC. These proposed formats have not been installed or measured.}
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+Record & Full precision & Reduced precision & Fields beyond the 11-byte common part \\
+\midrule
+Sensor & 22 bytes & 21 bytes & Start time (4), ADC duration (2), ADCs (4 or 3), flags (1) \\
+Motor target & 14 bytes & 13 bytes & Two packed targets (3 or 2) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The four-byte microsecond time is relative to an agreed job epoch and wraps after 71.6\,min; sequence wraps after 655.36\,s at 100\,Hz. Unwrapping, reset detection, session changes and maximum accepted age must be specified explicitly. ADC duration preserves the acquisition-end timestamp; sequence gaps and flags can report sample loss, with full counters in diagnostics. CRC validation, resynchronization and bounded parsing are required for a serial byte stream. A CRC detects corruption; it does not authenticate commands. If multiple commands per sample or more diagnostics are needed, allocate additional fields rather than silently overloading IDs.
+
+Relative to the recorded median sensor lengths of 41, 40 and 42 bytes and the 17-byte motor command, the lossless 22/14-byte proposal saves 22--23 bytes at 25/100\,Hz and 21 bytes at 50\,Hz. Table~\ref{tab:compact-projection} subtracts only that calculated serial time from the observed median round trip. It assumes all other delays remain unchanged, with no additional buffering or framing overhead; changes in CRC/parsing work, queues and ACK scheduling could alter the result.
+
+\begin{table}[H]
+\centering\small
+\caption{Speculative binary-UART projection, not new measurements. Rate is Hz; times are ms. Bytes saved are per sensor-plus-command pair. The last column additionally drops three ADC LSBs and uses six-bit motor magnitudes, saving two further bytes (0.174\,ms per cycle).}
+\label{tab:compact-projection}
+\input{figures/pi_desktop_clock/projection_table.tex}
+\end{table}
+
+Thus lossless binary UART could plausibly shorten the typical cycle by about \textbf{1.8--2.0\,ms}, leaving roughly 33.7, 13.7 and 3.7\,ms spare at 25, 50 and 100\,Hz. The proposed quantization adds only about 0.17\,ms to that saving; retaining sensor and motor precision initially is therefore attractive. Neither projection eliminates Wi-Fi/OS tails or demonstrates that 100\,Hz will always meet its deadline.
+
+Shrinking only the UDP packets leaves the UART bottleneck unchanged. Even saving 100 network bytes is just 8\,$\mu$s of raw serialization on a 100\,Mb/s link, or 0.133\,ms at an illustrative 6\,Mb/s radio data rate, before link overhead. The actual Wi-Fi data rate and contention vary, so these are arithmetic examples, not measured savings. Smaller or less frequent STATUS packets may reduce queue pressure, but that gain is unmeasured. The measurements support prioritizing lossless UART packing, then compact headers/status, and only then evaluating whether reduced numerical precision is worthwhile.

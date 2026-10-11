@@ -1,0 +1,17 @@
+\begin{tikzpicture}[font=\small,>=stealth,
+ block/.style={draw,thick,rounded corners,align=center,text width=3.2cm,minimum height=1cm},
+ rail/.style={->,very thick,red!70!black},
+ note/.style={font=\scriptsize,fill=white,align=center,inner sep=2pt}]
+\node[block,fill=red!8] (pack) at (0,4) {Shared 2S battery\\7.4 V nominal};
+\node[block,fill=orange!10] (logic) at (5,4) {Logic buck\\5.0 V};
+\node[block,fill=orange!10] (motor) at (5,1.3) {Motor buck\\6.0 V};
+\node[block,fill=blue!7,text width=4cm] (loads) at (10.5,4) {Pi + Teensy Vin\\+ three sensor VCC inputs};
+\node[block,fill=green!8,text width=4cm] (driver) at (10.5,1.3) {TB6612FNG VM\\Left and right motors};
+\draw[rail] (pack) -- node[note,above] {S1} (logic);
+\draw[rail] (2.5,4) -- (2.5,1.3) -- node[note,above] {S2} (motor);
+\fill[red!70!black] (2.5,4) circle (2pt);
+\draw[rail] (logic) -- node[note,above] {Parallel 5 V loads} (loads);
+\draw[rail] (motor) -- node[note,above] {6 V to VM} (driver);
+\draw[rail] (loads) -- node[note,right] {Teensy 3.3 V\\to driver VCC} (driver);
+\node[align=center,font=\small] at (5.2,-.2) {Common return: loads / bucks / signal grounds $\to$ ammeter $\to$ battery negative};
+\end{tikzpicture}

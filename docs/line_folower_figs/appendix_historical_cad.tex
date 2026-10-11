@@ -1,0 +1,75 @@
+\clearpage
+\section{Historical CAD Baseline and Mass Estimates}
+\label{app:historical-cad}
+This appendix preserves the September 15 mechanical design and its estimates. Its dimensions, views and mass budget are historical; they do not describe the September 15 September 24 package or its later roof.
+
+The September 15 design is a two-level differential-drive chassis with a rounded, rear-tapered deck outline. The working package is \path{cad_parts/assembly_sep15/}; its \texttt{main\_overview.FCStd} combines the September 15 lower deck, photo-sensor holder, two T joints, both pillar frames, and upper electronics deck. It contains 16 plastic parts and 24 illustrative hardware/electronics objects, each included once in the assembled view. The exploded group repeats these objects only for inspection. Nominal control dimensions are given in Table~\ref{tab:cad-control-dimensions}.
+
+\subsection{Chassis 3D Printing \& PETG}
+PETG is the September 15 printing material. The overview estimates use prior QIDI Q2 slice records with a 0.4\,mm nozzle, 0.20\,mm layers, four walls and 35\% infill, scaled by September 15 component-family CAD volume. These assumptions supersede the earlier three-wall, 15--20\% infill concept in this document. They do not constitute a newly sliced full-robot job. Each component still requires its own suitable orientation and supports; the revised pillar lettering/trim has not yet been sliced in a newly approved orientation. The assembled overview is for inspection, not printing.
+
+\subsection{Physical Stack \& Component Placements}
+\begin{itemize}
+    \item \textbf{Lower deck:} A nominal $100\times105\times4$\,mm plate carries the drive-motor mounts below it, rear caster mount, Raspberry Pi mounting/outline features, and an 18650 placement outline. The rear switch plate tilts outward by $20^\circ$ and the power-plug bore is 8.4\,mm. The modeled Pi and battery markings locate intended components; they are not complete purchased-part solids or a verified wiring/clearance arrangement.
+    \item \textbf{Pillars and head joint:} Each pair is one braced part with two nominal $16\times10$\,mm posts, two horizontal links and two crossed $3\times3$\,mm links. Front posts are 42\,mm tall above the 3\,mm T joints; aft posts are 45\,mm tall directly above the lower deck. All four tops meet at CAD $Z=49$\,mm. Their ends have 2\,mm blind screw pilots, 8.2\,mm deep; these are no longer insert pockets. The outer faces are trimmed to the deck outline and the pairs have raised F/A identification.
+    \item \textbf{Upper deck:} The matching nominal $100\times105$\,mm floor is 3\,mm thick at CAD $Z=49\ldots52$\,mm. It has four 3\,mm pillar mounting holes, engraved pillar outlines, an integrated Teensy holder with a $30\times50$\,mm floor opening, and two low end walls. The Teensy reference PCB underside is 7\,mm above the floor top. The USB cable support, separate cable-clamp cap and board-retaining clamp are included. Power A/B locations, the ammeter display opening and screw holes, and two hollow $30^\circ$ motor-driver supports occupy the surrounding plate; electronics envelopes are illustrative.
+    \item \textbf{Sensor head:} A 70\,mm-wide front holder is connected by the two T joints. It carries three optical-module references with 15.3\,mm pitch and centers 74\,mm ahead of the drive axle. The holder's overall installed depth is 51\,mm including its arms. Verify physical sensing height and channel placement before driving.
+\end{itemize}
+The lower-deck top is 24\,mm above the nominal floor; the upper floor underside/top are 69/72\,mm above it. The clear deck-to-deck gap, from the lower-deck top to the upper-floor underside, is 45\,mm. The complete modeled envelope is approximately $120\times161\times101.2$\,mm (width $\times$ length $\times$ height), including wheel references, the forward sensor head, rear switch projection and cable-clamp cap. This envelope does not account for unmodeled battery packs, wiring loops or purchased-part tolerances.
+
+\subsection{Mass Budgeting and Gravity Metrics}
+\label{sec:mass-budget}
+The overview's September 15 estimate is \textbf{138\,g of finished plastic}, with a rough planning range of 111--166\,g. Total PETG usage including the scaled support/brim allowance is about \textbf{143\,g}; the estimated sum of separate print-job times is \textbf{14.2\,h}, with a rough 9--19\,h planning range. These are scaled historical slicer estimates, not measured print durations or fresh slicing of the September 15 assembly. Hardware, electronics, cables, batteries and fasteners are excluded from the plastic mass, and assembly labor is excluded from time.
+
+\begin{table}[H]
+\centering
+\caption{Approximate PETG budget for the September 15 CAD parts. Rounded entries may not sum exactly.}
+\label{tab:cad-mass-budget}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Component family & Plastic parts & Finished plastic (g) & Printing (h) \\
+\midrule
+Lower deck, motor clamps and cable clips & 8 & 49.4 & 5.4 \\
+Photo-sensor holder & 1 & 11.7 & 1.4 \\
+T head joints & 2 & 3.9 & 0.5 \\
+Front and aft pillar frames & 2 & 27.2 & 2.4 \\
+Upper deck and two clamps & 3 & 46.2 & 4.5 \\
+\midrule
+Total & 16 & 138.4 & 14.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The earlier 450--550\,g whole-robot mass target remains a planning target, not a CAD-derived or weighed total. At the central plastic estimate, it would leave approximately 312--412\,g for all nonprinted components. Their masses and installed positions have not been fully recorded, so the overview cannot establish total mass, CoG or yaw inertia. The lower placement of the Pi/batteries and upper placement of the Teensy/driver supersede the older conceptual stack drawing. Check the loaded support triangle and caster load using Equation~\eqref{eq:caster-load}, rather than assuming that a CoG exactly over the axle is a verified balanced configuration.
+
+\subsection{September 15 CAD Visualization}
+\label{sec:historical-cad-visualization}
+Figure~\ref{fig:mechanical_layout} uses the assembled and exploded views exported from the September 15 overview CAD. Lower-deck parts are gray, the sensor head/T joints purple, front pillars orange, aft pillars blue, and the upper deck teal. Dark objects are illustrative purchased hardware/electronics. The CAD check found no positive-volume overlaps between the 16 plastic components; this does not validate unmodeled hardware fit or optical operating height.
+
+\begin{figure}[H]
+\centering
+\begin{minipage}[c]{0.55\linewidth}
+\centering
+\includegraphics[width=\linewidth,trim=390bp 150bp 410bp 250bp,clip]{figures/cad_sep15_assembled.png}
+\par\small (a) Assembled robot
+\end{minipage}\hfill
+\begin{minipage}[c]{0.42\linewidth}
+\centering
+\includegraphics[width=\linewidth,trim=490bp 120bp 540bp 200bp,clip]{figures/cad_sep15_exploded.png}
+\par\small (b) Exploded arrangement
+\end{minipage}
+\caption{September 15 CAD assembly, replacing the earlier circular-chassis concept. Both views show the same components; exploded spacing is illustrative and the two views use different scales. These images are inspection views, not print layouts.}
+\label{fig:mechanical_layout}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[height=0.40\textheight,trim=500bp 140bp 500bp 140bp,clip]{figures/cad_sep15_top.png}
+\caption{September 15 top view, with the sensor head toward the top. The upper deck shows the Teensy holder and cable clamp, Power A/B areas, ammeter opening on the left, and inclined driver supports on the right. The lower Pi/battery mounting features are beneath this level. Marked rectangles are placement references, not complete electronics models.}
+\label{fig:cad-top}
+\end{figure}
+
+The native overview opens with \texttt{Assembled} visible. Hide that group and show \texttt{Exploded} to inspect separated parts; double-click \texttt{Page1} or \texttt{Page2} for the embedded vector drawing sheets. The separate report is \path{cad_parts/assembly_sep15/overview/robot_overview.pdf}. Snapshot dimensions, source CAD hash and mass assumptions for this document are recorded in \path{docs/figures/cad_sep15_geometry.json}; figures are copied locally so the TeX document does not depend on a running FreeCAD instance.
+
+\clearpage

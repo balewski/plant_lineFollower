@@ -1,0 +1,12 @@
+\begin{tikzpicture}[font=\small,>=stealth,
+ block/.style={draw,thick,rounded corners,align=center,text width=4.4cm,minimum height=1.25cm},
+ link/.style={<->,thick}, note/.style={font=\scriptsize,align=center,fill=white,inner sep=3pt}]
+\node[block,fill=blue!8] (desktop) at (0,0) {Desktop: C++ Operator\\10.0.0.2\\Calibration + steering logic};
+\node[block,fill=gray!10,text width=2.5cm] (asus) at (5.3,0) {ASUS LAN\\10.0.0.1\\AirBears 3};
+\node[block,fill=green!8] (pi) at (10.6,0) {Pi: C++ Controller\\10.0.0.149\\Stream relay + command execution};
+\node[block,fill=green!8] (teensy) at (10.6,-3.0) {Teensy 4.1\\100 Hz timer + ADCs + motor PWMs};
+\draw[link] (desktop) -- node[note,above] {Ethernet} (asus);
+\draw[link,dashed] (asus) -- node[note,above] {2.4 GHz\\Wi-Fi} (pi);
+\draw[link] (pi) -- node[note,right] {115200 baud\\UART} (teensy);
+\node[align=left,text width=7.9cm,anchor=north west] at (-2.3,-1.7) {\textbf{Pi $\to$ Desktop:} 100 Hz sensor stream.\\A/B/C = left/center/right sensor readings;\\sample ID + Teensy timestamps.\\[5pt]\textbf{Desktop $\to$ Pi:} signed targets for the left/right motors + source sample ID.\\[5pt]\textbf{Pi:} reject stale commands; stop on expiry.};
+\end{tikzpicture}

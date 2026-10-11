@@ -1,0 +1,120 @@
+\clearpage
+\section{Bench-Test History}
+\label{app:bench-history}
+These records preserve earlier motor and sensor tests. Their individual test programs, rates and USB-era behavior are distinct from the current dual-motor UART line follower in Section~\ref{sec:local-controller}. Pin-level diagrams have been consolidated in Section~\ref{sec:electrical-design}.
+\subsection{Motor-B Bench Prototype (September 13)}
+\label{app:pi-teensy-motor}
+
+This appendix records the September 13, 2026 motor-B prototype. Figure~\ref{fig:pi-teensy-tb6612-wiring} and its power notes were updated on September 23 for the shared battery and UART wiring. Current \texttt{drive\_motorB.py} uses UART with Teensy firmware revision 9; the software/test account below retains the original USB setup with revision 3. Its client is preserved as \texttt{drive\_motorB\_usb.py}. Teensy generates PWM and direction signals; TB6612FNG (``TB66'') supplies motor current. Motor B is the right wheel; motor A remains undriven in this test.
+
+\subsubsection{Electrical Connections and Power Paths}
+Current wiring is shown in Figure~\ref{fig:pi-teensy-tb6612-wiring} in the main electrical section.
+
+\noindent\textbf{Battery and bucks.} The ammeter is in series between the battery plug negative terminal and common ground. The two series cells supply 7.4\,V nominal (8.4\,V fully charged for 4.2\,V cells); use compatible 2S protection/charging. S1 feeds both branches; opening S2 removes motor power while leaving the 5\,V logic supply on. The motor buck feeds VM at 6.0\,V. The logic buck feeds Pi and Teensy Vin in parallel at 5.0\,V, replacing the independent Pi supply. Converter models, current capacities and motor stall current remain unrecorded. The motor buck may lose regulation as the pack discharges; dropout depends on converter and load (\href{https://www.ti.com/product/LM5166}{TI buck example}). Discharge/load performance has not been characterized here.
+
+\noindent\textbf{Logic and returns.} Cutting Teensy's USB power bridge isolates VUSB from Vin. Its regulator still feeds TB6612 VCC at 3.3\,V, not 5\,V. The diagram identifies UART TX/RX pins; current firmware uses 115200 baud. Pi, Teensy, driver and both converter grounds join the ammeter's load-side common return. Route motor-current return directly to the motor buck, not through Teensy's signal ground. Retain local bypassing and motor suppression (Section~\ref{sec:electrical-design}). The 6\,V rail feeds VM only. See the \href{https://www.pjrc.com/store/teensy41.html}{PJRC Teensy reference} for 3.3\,V I/O and the \href{https://toshiba.semicon-storage.com/info/datasheet_en_20141001.pdf?did=10660}{Toshiba datasheet} for VM/VCC.
+
+\subsubsection{Pin Assignment and Drive States}
+\begin{table}[H]
+\centering\small
+\caption{Implemented motor-driver connections. Numbers are Teensy GPIO labels, not header-position counts.}
+\label{tab:motor-prototype-pins}
+\begin{tabular}{@{}L{2.4cm}L{3.6cm}L{9.8cm}@{}}
+\toprule
+\textbf{TB6612 signal} & \textbf{Connection} & \textbf{Purpose / present operation} \\
+\midrule
+PWMA & Teensy 3 & Channel A PWM input; held HIGH while B runs, with both A direction inputs LOW \\
+AIN1, AIN2 & Teensy 4, 5 & Both LOW: channel A remains high impedance when PWMA and STBY are HIGH \\
+STBY & Teensy 6 & HIGH enables the driver; LOW puts both channels in standby \\
+BIN1, BIN2 & Teensy 7, 8 & Forward command: BIN1 HIGH, BIN2 LOW \\
+PWMB & Teensy 9 & 20\,kHz hardware PWM, 8-bit duty command 0--255 \\
+VCC & Teensy 3.3\,V & Logic supply; separate from VM \\
+VM & Buck OUT+ & Regulated 6\,V motor supply \\
+GND & Common ground & Teensy GND, buck IN-/OUT-, and pack negative \\
+AO1 / AO2 & Left motor terminals & Channel A; not driven by this test program \\
+BO1 / BO2 & Right motor terminals & Channel B; forward direction depends on lead polarity \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The program maps percentage $s$ to duty $d=\operatorname{round}(255s/100)$. At 50\%, $d=128$. During PWM HIGH, channel B applies forward drive; during PWM LOW it uses the driver's short-brake state. \texttt{STOPB} instead pulls STBY LOW, giving high-impedance outputs so the motor coasts. PWM duty is not measured wheel speed; no encoder feedback is implemented. Pin 9's hardware PWM is configured with \texttt{analogWriteFrequency}, as described in the \href{https://www.pjrc.com/teensy/td_pulse.html}{PJRC PWM documentation}. The bridge states follow the Toshiba control table cited above.
+
+\noindent\textbf{Sensor integration.} The September 13 motor-only firmware described here has since been extended. Modules A, B and C now connect to A11, A12 and A13 (GPIO 25, 26 and 27). Installed firmware revision 9 uses this mapping; the sensor bench subsection~\ref{app:tcrt5000-prototype} records the 5\,V sensor supply and 3\,Hz UART readout. Pins 3--9 retain the motor assignments above.
+
+\subsubsection{Software Operation and Command Lifetime}
+The Pi discovers the Teensy USB serial device (currently \texttt{/dev/ttyACM0}), opens it exclusively, checks \texttt{VERSION}, then sends \texttt{STOPB}. It sends newline-terminated ASCII \texttt{MOTORB d} commands approximately every 100\,ms while driving and requires an \texttt{OK} reply to each. This roughly 10\,Hz bench protocol is separate from the future 1\,kHz binary controller interface in Table~\ref{tab:pi-teensy}; 20\,kHz PWM runs locally between USB commands.
+
+Firmware starts in standby. USB disconnection or more than 750\,ms without a valid nonzero motor command returns it to standby. \texttt{STOPB}, zero duty and invalid commands also stop drive. \texttt{STATUSB} reports commanded duty and standby state; it does not measure terminal voltage, current or rotation. The Python script attempts \texttt{STOPB} on completion, Ctrl+C, termination or communication errors. Only one serial-control program should run at a time. The earlier onboard-LED and pin-41 LED commands remain supported.
+
+The original test used a historical login. For current access use \texttt{pi@10.0.0.149}. The following preserved command examples require an explicit bench-test setup:
+\begin{verbatim}
+python3 ~/robot0/drive_motorB_usb.py --check
+python3 ~/robot0/drive_motorB_usb.py --speed 50 --seconds 3
+python3 ~/robot0/drive_motorB_usb.py --speed 50
+\end{verbatim}
+The first command checks communication and leaves the driver stopped. The second runs for three seconds; the third continues until Ctrl+C. Lift the wheel for bench tests. If the physical direction is reversed, turn off motor power before exchanging the BO1/BO2 motor leads.
+
+\subsubsection{Observed Test and Electrical Checks}
+Both three-second and continuous motor-B runs succeeded after soldering a previously unsoldered row of breakout-board header pins. Before that repair, USB commands were acknowledged but the motor did not turn. This confirms why a software acknowledgement alone is not an electrical test.
+
+For a voltage check, run at 100\% PWM while measuring at the driver board, relative to its GND: VCC should be about 3.3\,V, VM about 6\,V, STBY/BIN1/PWMB about 3.3\,V and BIN2 near 0\,V. BO1 should be near VM and BO2 near ground, allowing for driver voltage drop. Measure while the command is active; afterward standby is expected. With all power removed, check common-ground continuity and soldered header connections. Motor-A operation, stall current, regulator load response and the firmware timeout have not been physically characterized in this test.
+\clearpage
+\subsection{Three-Sensor Bench Readout and Wiring History}
+\label{app:tcrt5000-prototype}
+
+This appendix records the three-module prototype, with wiring updated on September 23, 2026. The modules are named \textbf{A, B and C}; their analog outputs (AO) now connect to Teensy \textbf{A11, A12 and A13} (GPIO \textbf{25, 26 and 27}), respectively. The September 14 bench readout used the earlier GPIO 21--23 mapping. These names identify wiring channels. In the September 15 CAD layout, the engraved A/B/C positions are left/center/right when looking forward toward the sensor head, with body lateral coordinates $+15.3,0,-15.3$\,mm (Table~\ref{tab:cad-control-dimensions}). Verify that the wired modules occupy those positions; the earlier bench test established acquisition, not installed channel placement.
+
+\subsubsection{Electrical Schematic}
+Current wiring is shown in Figure~\ref{fig:pi-teensy-tcrt5000-wiring} in the main electrical section.
+
+\noindent\textbf{Voltage and ground.} All three module VCC pins now receive 5\,V directly from the logic buck, alongside Pi and Teensy Vin. Teensy's 3.3\,V output continues to power TB6612 VCC, not the sensors. The \href{https://www.pjrc.com/store/teensy41.html}{PJRC Teensy 4.1 reference} specifies a fixed 0--3.3\,V analog-input range and no 5\,V tolerance. A module's 5\,V supply does not establish that its AO is safe for Teensy: verify the AO range before direct connection, and add suitable attenuation if it can exceed 3.3\,V. No attenuation circuit has been specified or shown here. Join sensor, Pi, Teensy, driver and buck grounds; route motor current directly to the motor buck rather than through sensor ground leads.
+
+\clearpage
+\subsubsection{Current Pin Labels}
+\begin{table}[H]
+\centering\small
+\caption{Current module connections. GPIO numbers are Teensy's printed pin labels, not physical header-position counts.}
+\label{tab:tcrt5000-prototype-pins}
+\begin{tabular}{@{}L{2.1cm}L{2.1cm}L{3.4cm}L{7.7cm}@{}}
+\toprule
+\textbf{Module} & \textbf{Module pin} & \textbf{Connection} & \textbf{Use} \\
+\midrule
+A & AO & 25 / A11 & First raw value, printed as \texttt{A} \\
+B & AO & 26 / A12 & Second raw value, printed as \texttt{B} \\
+C & AO & 27 / A13 & Third raw value, printed as \texttt{C} \\
+A, B, C & VCC & 5\,V buck OUT+ & Shared supply with Pi and Teensy Vin, connected in parallel \\
+A, B, C & GND & GND & Common signal and power reference \\
+A, B, C & DO & Not connected & Digital comparator output not used \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The aliases are \textbf{25 = A11, 26 = A12, 27 = A13}, as shown on the \href{https://www.pjrc.com/teensy/card11a_rev4_web.pdf}{PJRC pinout card}. AO denotes each module's analog output; it does not mean Teensy ADC A0. The motor allocation remains PWMA=3, AIN1=4, AIN2=5, STBY=6, BIN1=7, BIN2=8 and PWMB=9; it does not overlap these ADC pins. The older single-sensor test on GPIO 14 / A0 remains supported in firmware but is not part of the three-module wiring above.
+
+\subsubsection{Readout from the Pi}
+\noindent\textbf{Current firmware and transport.} Revision 9 was installed from the Pi on September 23. It reads modules A/B/C on A11/A12/A13 (GPIO 25/26/27), accepts UART commands at 115200 baud and uses pin 31 for the test LED. Nine UART sensor readings completed successfully with both motors in standby; this verifies acquisition, not the modules' full AO voltage range or reflectance calibration.
+
+The \texttt{ADC3} command reads the three configured pins sequentially with 10-bit resolution, then returns one line:
+\begin{verbatim}
+ADC3 <A_raw> <B_raw> <C_raw>
+\end{verbatim}
+Each value is an integer from 0 to 1023. The channels are acquired sequentially, not simultaneously. No conversion to volts or calibrated reflectance is performed by the three-sensor client.
+
+After SSH to the Pi, run:
+\begin{verbatim}
+cd ~/robot0
+./photo3_teensy25-27.py
+# Optional finite check: nine sets, approximately three seconds
+./photo3_teensy25-27.py --samples 9
+\end{verbatim}
+The program prints one timestamped A/B/C set at \textbf{3\,Hz}, approximately every 0.333\,s, until Ctrl+C. A nine-set bench check verified all three values and the expected sampling intervals; this verifies acquisition, not floor/track calibration. The first set is read immediately, so nine timestamps span about 2.67\,s.
+
+To also save readings in the designated output directory:
+\begin{verbatim}
+cd ~/robot0
+set -o pipefail
+./photo3_teensy25-27.py 2>&1 | tee -a out/teensy41/photo3_readings.log
+\end{verbatim}
+The Python script remains in \texttt{robot0}; shared firmware is under \path{robot0/teensy41/firmware/halo_teensy_firmware/}, and captured readings and checks belong under \texttt{robot0/out/teensy41/}. Run only one Teensy serial client at a time. The sensor reader sends \texttt{STOPB} at startup; in the current firmware this stops both motors. ADC requests do not refresh the 750\,ms motor-command watchdog. This reader is a stationary bench test, not simultaneous closed-loop motor and sensor control.
+
+\noindent\textbf{Interpreting the readings.} The breakout modules provide their existing analog signals; the current three-wire-per-module connection provides no independent emitter switching. No emitter-off subtraction is implemented. Compare the raw values on the actual dark track and light floor at a fixed height to establish each module's polarity, usable range and channel differences. Do not assume that a higher raw count universally means a darker or more reflective surface.

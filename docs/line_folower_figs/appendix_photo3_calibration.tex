@@ -1,0 +1,87 @@
+\clearpage
+\section{Three-Sensor Reflectance Calibration}
+\label{app:photo3-calibration}
+
+This appendix describes the calibration performed by \texttt{photo3\_calib.py}. Place the robot symmetrically over a straight black tape on a light floor, with sensor B centered on the tape and the robot aligned along it. The robot turns slowly in place so that each sensor, A, B and C, repeatedly crosses both surfaces. The installed modules produce \emph{high} ADC readings over black tape and \emph{low} readings over the light floor. Each channel is calibrated separately to account for its pedestal and sensitivity.
+
+\subsection{Motion and Sampling}
+The two wheels receive equal PWM magnitudes with opposite physical directions. A left turn drives the left wheel backward and the right wheel forward; a right turn reverses those directions. Starting from the centered orientation, the sequence is:
+\begin{enumerate}
+    \item Wait while stopped, then turn approximately $60^\circ$ left to reach one end of the scan.
+    \item Make $N$ one-way sweeps of approximately $120^\circ$, alternating right and left. The default $N=6$ gives three sweeps in each direction.
+    \item Turn approximately $60^\circ$ toward the original centered heading and stop. For even $N$, this final turn is right; for odd $N$, it is left.
+\end{enumerate}
+There is a stopped pause after every motion segment. Sensor readings are recorded during motion; only the $N$ full sweeps contribute to calibration statistics. Initial positioning and the final return are excluded. The target acquisition rate is 40 A/B/C triplets per second; the three channels are read sequentially.
+
+The angular motion is controlled by timing. Let $s$ be the PWM scale and $T_{180}$ the observed time for a $180^\circ$ turn at $s_0=0.5$. Unless a sweep duration is supplied explicitly, the nominal full-sweep time is
+\begin{equation}
+T_{120}=T_{180}\frac{120}{180}\frac{s_0}{s}.
+\label{eq:calib-sweep-time}
+\end{equation}
+With $T_{180}=1.07$\,s and $s=0.15$, $T_{120}\simeq2.378$\,s; the initial and final half-sweeps last about 1.189\,s each. If $T_p$ is the pause and $T_c$ the initial countdown, the nominal sequence duration is
+\begin{equation}
+T_{\mathrm{sequence}}=T_c+(N+1)T_{120}+(N+2)T_p,
+\end{equation}
+approximately 22.0\,s at the defaults, before communication and report-writing overhead. Equation~\eqref{eq:calib-sweep-time} assumes turn rate proportional to PWM. The sweep angle is approximate and depends on motor starting friction, floor contact and battery voltage. A measured \texttt{--sweep-time} overrides the estimate.
+
+\subsection{Separating White and Black Plateaus}
+For channel $i\in\{A,B,C\}$, pool its raw 10-bit ADC readings from the full sweeps and sort them as $v_{i,(0)},\ldots,v_{i,(M-1)}$. Quantiles use linear interpolation: for $r=(M-1)p$ and $j=\lfloor r\rfloor$,
+\begin{equation}
+Q_i(p)=v_{i,(j)}+(r-j)\bigl(v_{i,(\min(j+1,M-1))}-v_{i,(j)}\bigr).
+\end{equation}
+Define robust amplitude anchors and their span,
+\begin{equation}
+q_{i,L}=Q_i(0.02),\qquad q_{i,H}=Q_i(0.98),\qquad R_i=q_{i,H}-q_{i,L}.
+\end{equation}
+The white and black sample sets are selected by
+\begin{align}
+\mathcal W_i&=\{v_i:\ v_i\le q_{i,L}+0.20R_i\},\\
+\mathcal B_i&=\{v_i:\ v_i\ge q_{i,H}-0.20R_i\}.
+\end{align}
+These bands cover the bottom and top 20\% of the \emph{anchor amplitude span}. Readings between the bands are classified as transitions. The percentile anchors reduce sensitivity to isolated extrema when setting the bands, but values beyond the anchors are still included if they satisfy a band condition.
+
+\clearpage
+\subsection{Reported Statistics and Acceptance}
+For either selected set $\mathcal S\in\{\mathcal W_i,\mathcal B_i\}$, report its sample count, mean and sample standard deviation:
+\begin{equation}
+n=|\mathcal S|,\qquad
+\mu=\frac{1}{n}\sum_{v\in\mathcal S}v,\qquad
+\sigma=\sqrt{\frac{1}{n-1}\sum_{v\in\mathcal S}(v-\mu)^2}.
+\label{eq:calib-mean-std}
+\end{equation}
+Write these endpoints as $(\mu_{i,W},\sigma_{i,W},n_{i,W})$ and $(\mu_{i,B},\sigma_{i,B},n_{i,B})$. Here $n$ is the number of selected readings. The reported $\sigma$ describes variation among those readings, including sweep-to-sweep changes. Since samples are selected by amplitude and collected while moving, these deviations are practical estimates of endpoint variability.
+
+A channel is accepted only when all of the following hold:
+\begin{itemize}
+    \item The anchor span $R_i$ is at least \texttt{--min-contrast}, default 80 ADC counts.
+    \item Each white and black set contains at least eight readings.
+    \item Each surface contributes at least two readings in at least $\max(2,\lceil N/2\rceil)$ distinct sweeps. At $N=6$, both surfaces must recur in at least three sweeps.
+    \item No more than half of all full-sweep readings lie between the two endpoint bands.
+\end{itemize}
+The overall calibration is valid only after a completed run with all three channels accepted and the final motor stop acknowledged. An interruption stops the robot at its current heading and retains partial results.
+
+The resulting endpoint means and deviations feed the normalization and uncertainty model in Section~\ref{sec:local-controller}. The two latest output files are \path{robot0/out/photo3_calib.latest.json}, containing raw samples, statistics, validity and the calibration start time to one-second precision, and \path{robot0/out/photo3_calib.latest.txt}, containing the readable summary. Each run replaces these latest results. The report also stores the midpoint $(\mu_{i,W}+\mu_{i,B})/2$ as descriptive metadata.
+
+\subsection{Parameters}
+\begin{table}[H]
+\centering\small
+\caption{Calibration parameters. Speed denotes PWM fraction.}
+\label{tab:photo3-calib-parameters}
+\begin{tabular}{@{}L{3.4cm}L{2.7cm}L{10.0cm}@{}}
+\toprule
+\textbf{Parameter} & \textbf{Default} & \textbf{Meaning} \\
+\midrule
+\texttt{--speed} & 0.15 & Equal turn PWM magnitude; $0<s\le1$, with nonzero rounded PWM. \\
+\texttt{--sweeps} & 6 & Number of one-way full sweeps; at least 2. \\
+\texttt{--turn180} & 1.07\,s & Reference half-turn duration at PWM scale 0.5. \\
+\texttt{--sweep-time} & Estimated & Explicit full-sweep duration at the chosen speed; replaces Eq.~\eqref{eq:calib-sweep-time}. \\
+\texttt{--rate} & 40\,Hz & Target sampling and drive-refresh rate; 10--100\,Hz. \\
+\texttt{--pause} & 0.3\,s & Stopped pause after each segment; nonnegative. \\
+\texttt{--countdown} & 3\,s & Stopped delay before starting motion; nonnegative. \\
+\texttt{--min-contrast} & 80 counts & Minimum anchor span; greater than 0 and at most 1023. \\
+\texttt{--polarity} & \texttt{rr} & Left/right wiring signs: \texttt{ff}, \texttt{fr}, \texttt{rf}, or \texttt{rr}. \\
+\texttt{--port} & \texttt{/dev/serial0} & Pi--Teensy UART device. \\
+\texttt{--check} & False & Verify readout while keeping the robot stopped. \\
+\bottomrule
+\end{tabular}
+\end{table}
