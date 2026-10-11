@@ -73,6 +73,10 @@ cd cad_parts/assembly_sep24/<print_dir>
 mkdir -p ../tmp/<slice_dir>
 /Applications/QIDIStudio.app/Contents/MacOS/QIDIStudio \
   --load-settings 'machine.json;process.json' \
+  --load-filaments filamebly_sep24/<print_dir>
+mkdir -p ../tmp/<slice_dir>
+/Applications/QIDIStudio.app/Contents/MacOS/QIDIStudio \
+  --load-settings 'machine.json;process.json' \
   --load-filaments filament.json \
   --load-defaultfila \
   --arrange 0 --orient 0 --slice 0 \

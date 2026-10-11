@@ -18,4 +18,4 @@ __pycache__/
 *.log
 
 # Pi diagnostic logs
-/out/
+out/
