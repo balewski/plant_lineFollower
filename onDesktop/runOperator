@@ -60,11 +60,11 @@ fi
 quoted="$(printf '%q ' "${remote_args[@]}")"
 
 echo "Starting Pi controller"
-ssh_pi "PI_SRC='$PI_SRC' PI_BIN='$PI_BIN' ARGS=$(printf '%q' "$quoted") bash -s" << 'REMOTE'
+ssh_pi "PI_SRC='$PI_SRC' PI_BIN='$PI_BIN' PI_CTRL_LOG='$PI_CTRL_LOG' PI_CTRL_PID='$PI_CTRL_PID' ARGS=$(printf '%q' "$quoted") bash -s" << 'REMOTE'
 set -euo pipefail
 mkdir -p "$PI_BIN"
-log="$PI_BIN/controller.log"
-pidfile="$PI_BIN/controller.pid"
+log="$PI_CTRL_LOG"
+pidfile="$PI_CTRL_PID"
 : > "$log"
 # ARGS is already shell-quoted by the desktop.
 # shellcheck disable=SC2086
@@ -75,7 +75,7 @@ REMOTE
 
 cleanup() {
     local status=$?
-    ssh_pi "pidfile='$PI_BIN/controller.pid'
+    ssh_pi "pidfile='$PI_CTRL_PID'
 if [[ -f \$pidfile ]]; then
     pid=\$(cat \$pidfile)
     if kill -0 \$pid 2>/dev/null; then
@@ -90,7 +90,7 @@ trap cleanup EXIT
 echo "Waiting for the controller to open the Teensy"
 state=PENDING
 for _ in $(seq 1 40); do
-    state="$(ssh_pi "pid=\$(cat '$PI_BIN/controller.pid'); log='$PI_BIN/controller.log'
+    state="$(ssh_pi "pid=\$(cat '$PI_CTRL_PID'); log='$PI_CTRL_LOG'
 if ! kill -0 \$pid 2>/dev/null; then echo DEAD
 elif grep -q 'WAITING for Desktop job' \$log; then echo WAITING
 elif grep -q '^ERROR' \$log; then echo ERROR
@@ -99,7 +99,7 @@ fi")"
     case "$state" in
         WAITING) break ;;
         DEAD|ERROR)
-            ssh_pi "tail -n 50 '$PI_BIN/controller.log'" || true
+            ssh_pi "tail -n 50 '$PI_CTRL_LOG'" || true
             die "Pi controller stopped before the desktop job"
             ;;
     esac
@@ -107,7 +107,7 @@ fi")"
 done
 [[ "$state" == "WAITING" ]] || die "Pi controller did not become ready"
 
-route="$(ssh_pi "grep 'SSH route:' '$PI_BIN/controller.log' | head -n 1")"
+route="$(ssh_pi "grep 'SSH route:' '$PI_CTRL_LOG' | head -n 1")"
 pi_ip="$(printf '%s\n' "$route" | sed -n 's/.*Pi \([0-9.]*\); Desktop.*/\1/p')"
 desktop_ip="$(printf '%s\n' "$route" | sed -n 's/.*Desktop \([0-9.]*\).*/\1/p')"
 [[ "$pi_ip" == "10.0.0.20" ]] || die "Controller bound $pi_ip, expected Wi-Fi 10.0.0.20"
@@ -118,6 +118,7 @@ op_args=(
     --bind "$desktop_ip" --peer "$pi_ip"
     --port 5001 --peer-port 5000
     --duration "$duration"
+    --output "$PLANT_TMP"
 )
 if [[ -n "$speed" ]]; then
     op_args+=(--speed "$speed")
@@ -125,5 +126,6 @@ fi
 if [[ "$motors" -eq 1 ]]; then
     op_args+=(--enable-motors)
 fi
+echo "Mac run record: $PLANT_TMP"
 echo "Starting Mac operator"
 "$PLANT_BIN/run_operator" "${op_args[@]}"

@@ -402,7 +402,9 @@ struct Capture {
     U64 total = 0, start = ns();
     double cpu_start = cpu();
     fs::path path;
+    bool ram_events = false;
     Capture(const fs::path &base, const char *role) {
+        ram_events = std::strcmp(role, "controller") == 0;
         for (auto &v : metrics)
             v.resize(metric_capacity);
         char stamp[40];
@@ -462,7 +464,13 @@ struct Capture {
             ms[metric_names[m]] = Json(d);
         }
         out["metrics"] = Json(ms);
-        std::ofstream f(path / "events.csv");
+        // The Pi controller's event log is the large file. Keep it on the RAM disk.
+        fs::path events = path / "events.csv";
+        if (ram_events) {
+            events = fs::path("/tmp") / path.filename() / "events.csv";
+            require(fs::create_directories(events.parent_path()), "Cannot create /tmp event directory");
+        }
+        std::ofstream f(events);
         f << "t_ns,event,a,b,c,d,detail\n";
         for (U64 i = total > capacity ? total - capacity : 0; i < total; i++) {
             const auto &r = rows[i % capacity];
@@ -473,6 +481,7 @@ struct Capture {
         std::ofstream s(path / "summary.json");
         s << Json(out).serialize(true) << '\n';
         require(bool(s), "Cannot write summary");
+        std::cout << "EVENTS " << events << std::endl;
         std::cout << "REPORT " << (path / "summary.json") << std::endl;
     }
 };

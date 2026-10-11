@@ -23,9 +23,9 @@ if pkill -INT -f "$PLANT_BIN/clock_probe"; then
     echo "Interrupted Mac clock_probe"
 fi
 
-ssh_pi "bin='$PI_BIN'
-if [[ -f \$bin/controller.pid ]]; then
-    pid=\$(cat \$bin/controller.pid)
+ssh_pi "pidfile='$PI_CTRL_PID' bin='$PI_BIN'
+if [[ -f \$pidfile ]]; then
+    pid=\$(cat \$pidfile)
     if kill -0 \$pid 2>/dev/null; then
         kill -INT \$pid
         echo \"Interrupted Pi controller \$pid\"

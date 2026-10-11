@@ -59,12 +59,12 @@ done
 [[ -n "$desktop_iface" ]] || die "Desktop address $DESKTOP is not up. Plug Desktop Ethernet into the ASUS."
 
 ssh_pi "test -x '$PI_BIN/clock_probe' && test -x '$PI_BIN/gpio_clock'" || die "Missing Pi clock programs. Run updateBin first."
-if ssh_pi "pidfile='$PI_BIN/controller.pid'; [[ -f \$pidfile ]] && kill -0 \$(cat \$pidfile) 2>/dev/null"; then
+if ssh_pi "pidfile='$PI_CTRL_PID'; [[ -f \$pidfile ]] && kill -0 \$(cat \$pidfile) 2>/dev/null"; then
     die "Pi controller is running and owns /dev/serial0. Run stopPlant first."
 fi
 
 ssh_pi "'$PI_ROOT/config/write_boot_stamp.sh'"
-out=$(mktemp -d)
+out=$(mktemp -d "$PLANT_TMP/clocks.XXXXXX")
 limit=$(( pairs * 2 * INTERVAL_MS / 1000 + 60 ))
 pids=()
 

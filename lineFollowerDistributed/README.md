@@ -57,6 +57,7 @@ All of these are run on the Mac, from `onDesktop/`. They SSH to `pi2` with the k
 ./updateBin            # compile both programs, leave the firmware alone
 ./statusPlant          # report whether a run can start
 ./runOperator          # start the Pi controller, then the Mac operator
+./runOperatorVideo     # record the webcam, run the plant, write telemetry.mp4
 ./runClocksCalib       # measure Mac-Pi delay and Pi-Teensy delay (path B)
 ./stopPlant            # interrupt a run or a clock calibration
 ```
@@ -82,7 +83,9 @@ All of these are run on the Mac, from `onDesktop/`. They SSH to `pi2` with the k
 5. Sensor samples flow Teensy → Pi → Desktop. Desktop computes left/right PWM and the Pi applies those targets. With `--disable-motors`, the Pi does not apply them.
 6. Duration expiry, Ctrl-C, or `stopPlant` stops both sides. The controller confirms Teensy standby on the way out.
 
-`gpio_clock` is built next to `controller`. `runClocksCalib` runs it for the Pi–Teensy half. `clock_probe` is built on both machines for the Mac–Pi half. Video capture and the old unit-test programs were not ported.
+`gpio_clock` is built next to `controller`. `runClocksCalib` runs it for the Pi–Teensy half. `clock_probe` is built on both machines for the Mac–Pi half.
+
+`runOperatorVideo` uses `onDesktop/video.json` for the camera name and the recording budget. It starts the webcam, waits until the recorder prints `RECORDING`, then calls `runOperator`. The recording length is `startup_s + duration + tail_s` and must fit in `max_record_s`. The default duration is 8 seconds. Wheels turn unless `--disable-motors` is passed. One directory under `tmp/video/` holds the raw movie, both event logs, `overlay.json`, a preview PNG, and `telemetry.mp4`. The banner’s transmit row is rebuilt from `clock_calib.json` when the boot hash matches. Round trip and spare use the Teensy clock when the firmware reports motor receipt times.
 
 ## Firmware
 
@@ -96,4 +99,4 @@ It then copies the hex to the Pi and runs `teensy_loader_cli --mcu=TEENSY41 -s -
 
 ## Logs
 
-The Pi controller log for a launch is `lineFollowerDistributedBin/controller.log`, and its pid is `controller.pid` in that same directory. Both programs also write a timestamped report under `lineFollowerDistributedBin/out/` on the machine where they run. Those directories are gitignored.
+The Pi controller log for a launch is `/tmp/controller.log`, and its pid is `/tmp/controller.pid`. Both are on the Pi RAM disk. The controller writes `events.csv` under `/tmp/` as well. `summary.json` stays in `lineFollowerDistributedBin/out/` on the machine where that program runs. The Mac operator record is under the repository `tmp/` directory. Those directories are gitignored.
