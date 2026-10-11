@@ -20,7 +20,7 @@
 ---
 
 ## 3. Remote Raspberry Pi Environment
-- **Host**: SSH as `pi` with key `~/.ssh/pi_robot_ed25519`. Hosts in `~/.ssh/config`: `pi-asus-wifi` `10.0.0.20`, `pi-asus-eth` `10.0.0.120`, `pi-home-eth` `192.168.68.220`.
+- **Host**: SSH as `pi2` with key `~/.ssh/pi_robot_ed25519`. Hosts in `~/.ssh/config`: `pi2` `10.0.0.20`, `pi2-asus-eth` `10.0.0.120`, `pi2-home-eth` `192.168.68.220`.
 - **Fixed IPs**:
   - A, Wi-Fi (`wlan0`, `asus-robot`): `10.0.0.20`. Robot runs use this path only.
   - B, Ethernet to ASUS (`eth0`, `asus-ethernet`): `10.0.0.120`

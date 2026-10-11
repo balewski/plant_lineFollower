@@ -45,7 +45,7 @@ if [[ "$flash" -eq 1 ]]; then
     hex="$(find "$PLANT_BIN/teensy-build" -name '*.hex' -print -quit)"
     [[ -n "$hex" ]] || die "Firmware compile did not produce a hex file"
     echo "Uploading $(basename "$hex") through the Pi USB port"
-    scp -4 -o ConnectTimeout=8 "$hex" "${PI_USER}@${PI_HOST}:$PI_BIN/halo_teensy_firmware.hex"
+    scp -4 -o ConnectTimeout=8 "$hex" "${PI_SSH}:$PI_BIN/halo_teensy_firmware.hex"
     ssh_pi "bin='$PI_BIN'
 loader=\$bin/teensy_loader_cli
 libdir=\$bin/loader-libs

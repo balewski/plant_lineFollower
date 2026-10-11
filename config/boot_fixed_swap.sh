@@ -11,7 +11,7 @@ fail() { echo "Stopped: $*" >&2; exit 1; }
 config() {
   printf '%s\n' '# Robot Pi: retain current swap sizes; avoid automatic sizing at every generator run.' '[File]' 'FixedSizeMiB=426' '' '[Zram]' 'FixedSizeMiB=426'
 }
-[[ "$(hostname)" == raspberrypi ]] || fail "This script is prepared for raspberrypi only."
+[[ "$(hostname)" == pi2 ]] || fail "This script is prepared for pi2 only."
 check() {
   [[ "$(tr -d '\0' </proc/device-tree/model)" == "Raspberry Pi Model B Plus Rev 1.2" ]] || fail "Pi model changed."
   [[ "$(stat -c %s /var/swap)" == "$SIZE_BYTES" ]] || fail "Disk backing size changed; review first."

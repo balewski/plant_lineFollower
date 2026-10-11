@@ -19,7 +19,7 @@ Robot runs use path A only.
 
 | Machine | Address | Interface |
 |---|---|---|
-| Pi | `10.0.0.20` | Wi-Fi to ASUS AirBears 3 |
+| pi2 | `10.0.0.20` | Wi-Fi to ASUS AirBears 3 |
 | Desktop | `10.0.0.2` | Ethernet into the ASUS |
 | ASUS | `10.0.0.1` | transports packets, does not steer |
 
@@ -48,7 +48,7 @@ When the Pi controller starts, it opens that latest file and hashes it. `runOper
 
 ## Commands
 
-All of these are run on the Mac, from `onDesktop/`. They SSH to `pi@10.0.0.20` with the key already in `~/.ssh/config`.
+All of these are run on the Mac, from `onDesktop/`. They SSH to `pi2` with the key already in `~/.ssh/config`. Path B is `pi2-asus-eth` and path C is `pi2-home-eth`. The login account is `pi`.
 
 ```bash
 ./makeBin              # compile both programs and flash the Teensy
