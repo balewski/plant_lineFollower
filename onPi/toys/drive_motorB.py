@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Drive motor B forward through Pi UART, Teensy 4.1, and TB6612FNG.
 
-Run on the Pi: python3 ~/plant_lineFolower/onPi/toys/drive_motorB.py
+Run on the Pi: python3 ~/plant_lineFollower/onPi/toys/drive_motorB.py
 BIN1=7, BIN2=8, PWMB=9, STBY=6. Logic=3.3 V, VM=external 6 V.
 Forward means BIN1 high / BIN2 low; physical direction depends on motor wiring.
 Requires halo_teensy_firmware revision 7 or later with UART1 support.

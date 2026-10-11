@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Blink Teensy pin 29 via UART: 0.4 s on, then 0.4 s off.
 
-Run on the Pi: python3 ~/plant_lineFolower/onPi/toys/blink_teensy29.py
+Run on the Pi: python3 ~/plant_lineFollower/onPi/toys/blink_teensy29.py
 Requires halo_teensy_firmware revision 13 or later with UART1 support.
 Pi GPIO14/TX (header 8) -> Teensy 0/RX1;
 Pi GPIO15/RX (header 10) <- Teensy 1/TX1; connect a common GND.

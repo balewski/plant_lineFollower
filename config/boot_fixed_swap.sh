@@ -4,7 +4,7 @@
 set -euo pipefail
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 TARGET=/etc/rpi/swap.conf.d/90-robot-fixed-size.conf
-STATE=/home/pi/plant_lineFolower/out/boot_tuning/fixed_swap_state
+STATE=/home/pi/plant_lineFollower/out/boot_tuning/fixed_swap_state
 SIZE_MIB=426
 SIZE_BYTES=446693376
 fail() { echo "Stopped: $*" >&2; exit 1; }
@@ -76,4 +76,4 @@ committed=yes
 sync
 echo "Installed for NEXT BOOT: 426 MiB zram plus the existing 426 MiB disk backing."
 echo "Current swap and networking remain active. No daemon reload or resize was run."
-echo "Undo: sudo /home/pi/plant_lineFolower/config/boot_fixed_swap.sh --undo"
+echo "Undo: sudo /home/pi/plant_lineFollower/config/boot_fixed_swap.sh --undo"

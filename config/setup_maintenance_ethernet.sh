@@ -25,7 +25,7 @@ if nmcli -g connection.uuid connection show id "$fallback" >/dev/null 2>&1; then
     echo "Maintenance profile already exists; inspect it before rerunning." >&2
     exit 1
 fi
-backup=/home/pi/plant_lineFolower/out/maintenance_setup_$(date +%Y%m%d_%H%M%S)
+backup=/home/pi/plant_lineFollower/out/maintenance_setup_$(date +%Y%m%d_%H%M%S)
 umask 077
 mkdir -p "$backup"
 cp -a /etc/NetworkManager/system-connections "$backup/"
