@@ -17,10 +17,11 @@ Desktop Ethernet is 10.0.0.2.
    The controller must not be running; this command owns /dev/serial0.
 
 --pairs is the number of Mac-Pi probe pairs (default 100, 25 ms apart).
-The result is one JSON on the Pi: config/clock_calib.json. It stores the
-printed summary for both paths and the Pi-Teensy edges, plus the boot hash8
-and the Pi local time. It does not store individual probes or edges. A later
-reboot writes a new config/boot.json and the old clock file no longer matches.
+The Mac writes one summary, config/clock_calib.json, and copies only that
+file to the Pi. It stores the printed summary for both paths and the Pi-Teensy
+edges, plus the boot hash8 and the Pi local time. It does not store individual
+probes or edges. A later reboot writes a new config/boot.json and the old
+clock file no longer matches.
 Stop a stuck run from another terminal with stopPlant.
 EOF
     exit 0
@@ -75,7 +76,7 @@ cleanup() {
     fi
     pkill -INT -f "$PLANT_BIN/clock_probe client" 2>/dev/null || true
     rm -rf "$out"
-    ssh_pi "rm -f /tmp/clock_probe_ethernet.log /tmp/clock_probe_wifi.log /tmp/clock_calib_probes.csv /tmp/clock_calib_gpio.json" || true
+    ssh_pi "rm -f /tmp/clock_probe_ethernet.log /tmp/clock_probe_wifi.log /tmp/clock_calib_gpio.json '$PI_ROOT/config/clock_calib.json.tmp'" || true
     exit "$status"
 }
 trap cleanup EXIT INT TERM
@@ -138,13 +139,19 @@ pids=()
 
 echo "Pi-Teensy clock: 200 edges, Teensy pin 20 to Pi GPIO23"
 ssh_pi "'$PI_BIN/gpio_clock' --samples 200 --blinks 3 --label clocks --output /tmp/clock_calib_gpio.json"
-scp -4 -o ConnectTimeout=8 "$out/probes.csv" "${PI_SSH}:/tmp/clock_calib_probes.csv"
-ssh_pi "python3 - << 'PY'
-import csv, json, os
-from datetime import datetime
-config = '/home/pi/plant_lineFollower/config'
-boot = json.load(open(config + '/boot.json'))
-if len(boot.get('hash8', '')) != 8:
+scp -4 -o ConnectTimeout=8 "${PI_SSH}:/tmp/clock_calib_gpio.json" "$out/gpio.json"
+ssh_pi "rm -f /tmp/clock_calib_gpio.json"
+ssh_pi "cat '$PI_ROOT/config/boot.json'" > "$out/boot.json"
+pi_time="$(ssh_pi "awk '{print \$1}' /proc/uptime; date -Iseconds")"
+uptime_s="$(printf '%s\n' "$pi_time" | sed -n '1p')"
+local_time="$(printf '%s\n' "$pi_time" | sed -n '2p')"
+[[ -n "$uptime_s" && -n "$local_time" ]] || die "Pi uptime or local time is missing"
+python3 - "$out/probes.csv" "$out/gpio.json" "$out/boot.json" "$uptime_s" "$local_time" "$out/clock_calib.json" << 'PY'
+import csv, json, os, sys
+probes_path, gpio_path, boot_path, uptime_s, local_time, dest = sys.argv[1:]
+boot = json.load(open(boot_path))
+hash8 = boot.get('hash8', '')
+if len(hash8) != 8:
     raise SystemExit('boot.json has no hash8')
 
 def median(values):
@@ -167,8 +174,8 @@ def path_summary(rows, path):
         'midpoint_ms': {'median': ms(median(mid))},
     }
 
-rows = list(csv.DictReader(open('/tmp/clock_calib_probes.csv')))
-gpio = json.load(open('/tmp/clock_calib_gpio.json'))
+rows = list(csv.DictReader(open(probes_path)))
+gpio = json.load(open(gpio_path))
 change = gpio.get('offset_change_from_first_us') or {}
 residual = gpio.get('detrended_residual_us') or {}
 bracket = gpio.get('teensy_bracket_us') or {}
@@ -194,25 +201,24 @@ pi_teensy = {
 if gpio.get('error'):
     pi_teensy['error'] = gpio['error']
 body = {
-    'hash8': boot['hash8'],
-    'local_time': datetime.now().astimezone().isoformat(timespec='seconds'),
-    'uptime_s': float(open('/proc/uptime').read().split()[0]),
+    'hash8': hash8,
+    'local_time': local_time,
+    'uptime_s': float(uptime_s),
     'mac_pi': {'ethernet': path_summary(rows, 'ethernet'), 'wifi': path_summary(rows, 'wifi')},
     'pi_teensy': pi_teensy,
 }
-dest = config + '/clock_calib.json'
-tmp = dest + '.tmp'
-with open(tmp, 'w') as handle:
+with open(dest, 'w') as handle:
     json.dump(body, handle, indent=2)
     handle.write('\n')
     handle.flush()
     os.fsync(handle.fileno())
-os.replace(tmp, dest)
 print('hash8', body['hash8'])
 print('uptime_s', body['uptime_s'])
 print('local_time', body['local_time'])
-print(dest)
-PY"
+print('/home/pi/plant_lineFollower/config/clock_calib.json')
+PY
+scp -4 -o ConnectTimeout=8 "$out/clock_calib.json" "${PI_SSH}:${PI_ROOT}/config/clock_calib.json.tmp"
+ssh_pi "mv -f '$PI_ROOT/config/clock_calib.json.tmp' '$PI_ROOT/config/clock_calib.json'"
 rm -rf "$out"
-ssh_pi "rm -f /tmp/clock_probe_ethernet.log /tmp/clock_probe_wifi.log /tmp/clock_calib_probes.csv /tmp/clock_calib_gpio.json"
+ssh_pi "rm -f /tmp/clock_probe_ethernet.log /tmp/clock_probe_wifi.log /tmp/clock_calib_gpio.json"
 trap - EXIT INT TERM

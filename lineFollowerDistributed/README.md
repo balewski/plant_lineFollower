@@ -35,7 +35,7 @@ UDP is Pi `:5000` and Desktop `:5001`. The Pi controller takes those addresses f
 | `lineFollowerDistributedBin/` | no | `run_operator` and `clock_probe` on the Mac; `controller`, `gpio_clock` and `clock_probe` on the Pi |
 | `onDesktop/` | yes | the six commands below |
 | `config/photo3_calib.json` | yes | latest sensor calibration, written on the Pi |
-| `config/clock_calib.json` | yes | latest clock summary, written on the Pi |
+| `config/clock_calib.json` | yes | latest clock summary, built on the Mac and stored on the Pi |
 | `config/boot.json` | yes | hash8 for the Pi boot of those calibrations |
 
 The Mac binary and the Pi binary are different builds of different sources. `updateBin` compiles each one on the machine that runs it. Do not copy `run_operator` onto the Pi or `controller` onto the Mac.

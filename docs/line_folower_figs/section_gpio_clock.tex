@@ -5,7 +5,7 @@ Message latency requires timestamps at clearly defined boundaries and a mapping 
 
 \subsection{Current measurement}
 \label{sec:clock-method}
-\texttt{runClocksCalib} leaves the wheels stopped and does not change Teensy firmware. The controller must not be running, because this command owns \texttt{/dev/serial0}. The optional \texttt{--pairs} count defaults to 100, and probes on the two paths are 25\,ms apart. The command refreshes \path{config/boot.json}, measures both network paths, then measures the timing wire, and replaces \path{/home/pi/plant_lineFollower/config/clock_calib.json} with one summary.
+\texttt{runClocksCalib} leaves the wheels stopped and does not change Teensy firmware. The controller must not be running, because this command owns \texttt{/dev/serial0}. The optional \texttt{--pairs} count defaults to 100, and probes on the two paths are 25\,ms apart. The command refreshes \path{config/boot.json}, measures both network paths, then measures the timing wire. The Mac builds one summary and copies only that file to \path{/home/pi/plant_lineFollower/config/clock_calib.json}.
 
 The Mac--Pi half starts a \texttt{clock\_probe} server on each Pi address: Ethernet \texttt{10.0.0.120} on \texttt{eth0}, port 53120, and Wi-Fi \texttt{10.0.0.20} on \texttt{wlan0}, port 53121. Desktop binds \texttt{10.0.0.2} and alternates probes between those servers. Each probe records Desktop send $D_1$, Pi receive $P_2$, Pi reply $P_3$ and Desktop receive $D_4$. Pi turnaround is removed from the corrected round trip,
 \begin{equation}
