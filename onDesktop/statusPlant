@@ -25,13 +25,12 @@ else
     exit 1
 fi
 
-remote="$(ssh_pi "python3 - '$PI_CALIB' '$PI_BIN' << 'PY'
+remote="$(ssh_pi "python3 - '$PI_CALIB' '$PI_CTRL_PID' << 'PY'
 import json, os, sys
-calib, bin_dir = sys.argv[1], sys.argv[2]
-def alive(name):
-    pidfile = os.path.join(bin_dir, name)
+calib, pidfile = sys.argv[1], sys.argv[2]
+def alive(path):
     try:
-        pid = int(open(pidfile).read().strip())
+        pid = int(open(path).read().strip())
     except (OSError, ValueError):
         return 'not-running'
     try:
@@ -39,7 +38,7 @@ def alive(name):
     except OSError:
         return 'not-running'
     return 'running pid %d' % pid
-print('controller:', alive('controller.pid'))
+print('controller:', alive(pidfile))
 print('uart:', 'present' if os.path.exists('/dev/serial0') else 'missing')
 print('teensy-usb:', 'present' if os.path.exists('/dev/ttyACM0') else 'missing')
 try:

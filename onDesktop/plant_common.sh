@@ -4,6 +4,9 @@ set -euo pipefail
 PLANT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLANT_SRC="$PLANT_ROOT/lineFollowerDistributed"
 PLANT_BIN="$PLANT_ROOT/lineFollowerDistributedBin"
+# Scratch and run records from the onDesktop commands. Binaries stay in PLANT_BIN.
+PLANT_TMP="$PLANT_ROOT/tmp"
+mkdir -p "$PLANT_TMP"
 PI_HOST="${PI_HOST:-10.0.0.20}"
 PI_USER=pi
 case "$PI_HOST" in
@@ -16,6 +19,9 @@ PI_ROOT=/home/pi/plant_lineFollower
 PI_SRC=$PI_ROOT/lineFollowerDistributed
 PI_BIN=$PI_ROOT/lineFollowerDistributedBin
 PI_CALIB=$PI_ROOT/config/photo3_calib.json
+# Controller launch files stay on the Pi RAM disk. /tmp is tmpfs.
+PI_CTRL_LOG=/tmp/controller.log
+PI_CTRL_PID=/tmp/controller.pid
 ARDUINO_CLI="${ARDUINO_CLI:-/Users/balewski/shared_volumes/2026_robot1/robot0/teensy41/tools/arduino-cli}"
 ARDUINO_DATA="${ARDUINO_DATA:-/Users/balewski/shared_volumes/2026_robot1/robot0/teensy41/tools/arduino-data}"
 
