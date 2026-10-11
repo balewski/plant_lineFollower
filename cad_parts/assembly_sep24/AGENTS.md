@@ -48,6 +48,9 @@ This unified document guides automated agents and developers on preparing, slici
    - Never rebuild `main_overview.FCStd` (`overview/build_overview.py`) after a CAD or parameter change, even when the changed part appears in it.
    - The user will say when to rebuild it. Until then, leave it as is and, if useful, mention that it is out of date.
 
+6. **Git Policy (No Commit / No Push)**:
+   - **Never run `git commit` or `git push`**. Only stage files with `git add` when appropriate. The user manages all commits and pushes.
+
 ---
 
 ## 3. End-to-End Printing Workflow
