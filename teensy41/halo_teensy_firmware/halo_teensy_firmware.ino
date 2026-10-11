@@ -7,8 +7,8 @@
 #error Select Teensy 4.1 as the target board.
 #endif
 
-constexpr uint8_t EXTERNAL_LED = 29;
-constexpr uint8_t CLOCK_EDGE_PIN = 31;
+constexpr uint8_t EXTERNAL_LED = 21;
+constexpr uint8_t CLOCK_EDGE_PIN = 20;
 bool edgeSessionActive = false;
 uint64_t edgeSession = 0;
 uint32_t edgeSequence = 0, edgeLastCommand = 0;
@@ -279,7 +279,7 @@ void handleCommand(const char *command, Stream &port, bool viaUsb, uint64_t rece
     // Preserve the version prefix accepted by the existing halo_teensy.py.
     port.print("HALO_TEENSY/1.0; board=Teensy 4.1; OS=none (bare metal); Teensyduino=");
     port.print(TEENSYDUINO);
-    port.println("; features=GPIO29,MOTOR_B,MOTOR_AB,ADC14,ADC3,STREAM1,CLOCK,MOTOR_TIME,TIME_SYNC,GPIO_EDGE_CLOCK,JOB_LED; revision=15; LED_PIN=29; UART1=115200,8N1; RX1=0; TX1=1; AIN1=4; AIN2=5; PWMA=3; BIN1=7; BIN2=8; PWMB=9; STBY=6; ADC14=A0; ADC3=25,26,27; ADC_BITS=10");
+    port.println("; features=GPIO21,MOTOR_B,MOTOR_AB,ADC14,ADC3,STREAM1,CLOCK,MOTOR_TIME,TIME_SYNC,GPIO_EDGE_CLOCK,JOB_LED; revision=16; LED_PIN=21; CLOCK_PIN=20; UART1=115200,8N1; RX1=0; TX1=1; AIN1=4; AIN2=5; PWMA=3; BIN1=7; BIN2=8; PWMB=9; STBY=6; ADC14=A0; ADC3=25,26,27; ADC_BITS=10");
   } else if (strcmp(command, "TIMESYNC 00000000000000000000 00000000000000000000") == 0) {
     // Complete-line receive stamp, then reply-construction stamp. Both clocks
     // keep running; this diagnostic does not touch ADC scheduling or motor refresh.

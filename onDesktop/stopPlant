@@ -1,0 +1,38 @@
+#!/bin/bash
+# Interrupt the Mac operator and the Pi controller. The controller then stops the Teensy.
+set -euo pipefail
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    echo "stopPlant [--pi 10.0.0.149]"
+    echo "Send SIGINT to run_operator on this Mac and to controller on the Pi."
+    exit 0
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --pi) export PI_HOST="$2"; shift 2 ;;
+        *) echo "Unknown option $1" >&2; exit 1 ;;
+    esac
+done
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/plant_common.sh"
+
+if pkill -INT -f "$PLANT_BIN/run_operator"; then
+    echo "Interrupted Mac operator"
+else
+    echo "Mac operator was not running"
+fi
+
+ssh_pi "bin='$PI_BIN'
+if [[ -f \$bin/controller.pid ]]; then
+    pid=\$(cat \$bin/controller.pid)
+    if kill -0 \$pid 2>/dev/null; then
+        kill -INT \$pid
+        echo \"Interrupted Pi controller \$pid\"
+    else
+        echo 'Pi controller was not running'
+    fi
+else
+    echo 'Pi controller was not running'
+fi
+if pkill -INT -f \$bin/gpio_clock; then
+    echo 'Interrupted gpio_clock'
+fi
+" || echo "Could not reach pi@${PI_HOST}"

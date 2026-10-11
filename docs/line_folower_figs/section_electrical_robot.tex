@@ -20,13 +20,13 @@ All signal grounds share a reference. Route motor current back to the motor buck
 \begin{figure}[H]
 \centering
 \resizebox{.86\linewidth}{!}{\input{pi_teensy_tb6612_wiring.tikz}}
-\caption{Pin-level motor wiring, timing connection and indicator LEDs. Channel A drives the left wheel; channel B drives the right wheel. Teensy pin 31 connects through 5\,k$\Omega$ to Pi GPIO23 (header pin 16) for shared-edge timing. Pi GPIO24 (header pin 18) and Teensy pin 29 each drive a separate grounded LED through 5\,k$\Omega$. S1 and S2 are cascaded; all grounds join the ammeter's load side.}
+\caption{Pin-level motor wiring, timing connection and indicator LEDs. Channel A drives the left wheel; channel B drives the right wheel. Teensy pin 20 connects through 5\,k$\Omega$ to Pi GPIO23 (header pin 16) for shared-edge timing. Pi GPIO24 (header pin 18) and Teensy pin 21 each drive a separate grounded LED through 5\,k$\Omega$. S1 and S2 are cascaded; all grounds join the ammeter's load side.}
 \label{fig:pi-teensy-tb6612-wiring}
 \end{figure}
 
 Pi GPIO14/TX (header pin 8) connects to Teensy pin 0/RX1. Pi GPIO15/RX (header pin 10) connects to Teensy pin 1/TX1. Both are 3.3\,V signals, with common ground. The current client opens \texttt{/dev/serial0} at 115200 baud, 8N1. USB is retained as a programming option, not the normal control-data path.
 
-The timing wire is separate from UART: Teensy pin 31 is the pulse output and Pi GPIO23 is the input. Each indicator LED has its anode connected through its own 5\,k$\Omega$ resistor to its GPIO output and its cathode connected to common ground. Firmware revision 15 retains the standalone \texttt{measure\_pi\_teensy\_clock} test: both LEDs flash twice (0.5\,s on, 0.5\,s off), then numbered timing pulses compare Teensy timestamps with Pi kernel GPIO-event timestamps. Motors remain disabled. The reported offset applies no latency correction; the assumed 0.1\,ms allowance is not an independently verified accuracy bound.
+The timing wire is separate from UART: Teensy pin 20 is the pulse output and Pi GPIO23 is the input. Each indicator LED has its anode connected through its own 5\,k$\Omega$ resistor to its GPIO output and its cathode connected to common ground. Firmware revision 16 retains the standalone \texttt{measure\_pi\_teensy\_clock} test: both LEDs flash twice (0.5\,s on, 0.5\,s off), then numbered timing pulses compare Teensy timestamps with Pi kernel GPIO-event timestamps. Motors remain disabled. The reported offset applies no latency correction; the assumed 0.1\,ms allowance is not an independently verified accuracy bound.
 
 \begin{table}[H]
 \centering\small

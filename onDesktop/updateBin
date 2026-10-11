@@ -1,0 +1,9 @@
+#!/bin/bash
+# Compile the Mac operator and the Pi controller. Does not touch the Teensy.
+set -euo pipefail
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    echo "updateBin [--pi 10.0.0.149]"
+    echo "Compile both programs. Leave the Teensy firmware as it is."
+    exit 0
+fi
+exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/build_plant.sh" "$@"

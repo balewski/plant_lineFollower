@@ -1,0 +1,13 @@
+{
+  "bind": "10.0.0.149",
+  "port": 5000,
+  "peer": "10.0.0.2",
+  "peer_port": 5001,
+  "serial": "/dev/serial0",
+  "rate": 100,
+  "freshness_ms": 100,
+  "max_pwm": 255,
+  "duration": 120,
+  "serial_timeout_ms": 80,
+  "polarity": "rr"
+}

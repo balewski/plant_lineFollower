@@ -19,3 +19,7 @@ __pycache__/
 
 # Pi diagnostic logs
 out/
+
+# Compiled line-follower programs. The Mac copy holds run_operator.
+# The Pi copy holds controller and gpio_clock. Neither belongs in git.
+lineFollowerDistributedBin/
