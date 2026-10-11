@@ -1,0 +1,4 @@
+# buildTex.sh outputs (aux in tmp/; final PDFs at docs root)
+tmp/
+/line_folower.pdf
+/line_follower_summary.pdf

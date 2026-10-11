@@ -1,0 +1,33 @@
+\begin{tikzpicture}[
+    box/.style={draw,thick,rounded corners,align=center,inner sep=7pt,
+        font=\small,minimum width=4.6cm,minimum height=2.3cm},
+    home/.style={box,draw=blue!70!black,fill=blue!6},
+    mac/.style={box,draw=orange!65!black,fill=orange!7},
+    pi/.style={box,draw=green!45!black,fill=green!6},
+    asus/.style={box,draw=green!45!black,fill=green!6},
+    lab/.style={font=\small,align=center,fill=white,inner sep=2pt},
+    eth/.style={<->,very thick},
+    wifi/.style={<->,thick,dashed}
+]
+\node[home] (home) at (0,0) {%
+    \textbf{Home router}\\[2pt]
+    \texttt{192.168.68.1}\\
+    Internet};
+\node[mac] (mac) at (11.2,0) {%
+    \textbf{Desktop}\\[2pt]
+    Wi-Fi \texttt{192.168.68.107}\\
+    Ethernet \texttt{10.0.0.2}};
+\node[pi] (pi) at (0,-5.6) {\textbf{Pi}};
+\node[asus] (asus) at (11.2,-5.6) {%
+    \textbf{ASUS}\\[2pt]
+    \texttt{10.0.0.1}\\
+    AirBears 3};
+\draw[wifi,blue!70!black] (home.east) -- node[lab,above] {\textbf{C}} (mac.west);
+\draw[eth,black!65] (mac.south) -- node[lab,right] {\textbf{A, B}} (asus.north);
+\draw[wifi,green!45!black] ([yshift=3mm]asus.west) --
+    node[lab,above] {\textbf{A}\ Wi-Fi only\ \texttt{10.0.0.149}} ([yshift=3mm]pi.east);
+\draw[eth,green!45!black] ([yshift=-3mm]asus.west) --
+    node[lab,below] {\textbf{B}\ Ethernet\ \texttt{10.0.0.24}} ([yshift=-3mm]pi.east);
+\draw[eth,blue!70!black] (home.south) --
+    node[lab,right] {\textbf{C}\ Ethernet\\ \texttt{192.168.68.125}} (pi.north);
+\end{tikzpicture}

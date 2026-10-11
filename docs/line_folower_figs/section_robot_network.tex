@@ -1,0 +1,34 @@
+\clearpage
+\section{Network Configuration and Access}
+\label{sec:network}
+\subsection{Three SSH Paths}
+Figure~\ref{fig:laptop-robot-lan} shows the three ways Desktop reaches Pi. All addresses are fixed and all prefixes are /24. Path A is the Pi with only Wi-Fi connected. Paths B and C require the Pi Ethernet cable: plugged into an ASUS LAN port for B, and into the home router for C.
+
+\begin{figure}[H]
+\centering
+\input{laptop_robot_lan.tikz}
+\caption{SSH paths. A, Wi-Fi only: Pi \texttt{10.0.0.149} to ASUS. B and C require the Pi Ethernet cable. B: that cable to ASUS, Pi \texttt{10.0.0.24}. C: that cable to the home router, Pi \texttt{192.168.68.125}. Desktop is \texttt{10.0.0.2} on A and B, and \texttt{192.168.68.107} on C.}
+\label{fig:laptop-robot-lan}
+\end{figure}
+
+\begin{table}[H]
+\centering\small
+\caption{Fixed SSH addresses.}
+\label{tab:current-network}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Path & Pi address & Connection \\
+\midrule
+A & \texttt{10.0.0.149} & Wi-Fi only. Pi Wi-Fi to ASUS AirBears 3. Desktop Ethernet \texttt{10.0.0.2}. \\
+B & \texttt{10.0.0.24} & Pi Ethernet cable to an ASUS LAN port. Desktop Ethernet \texttt{10.0.0.2}. \\
+C & \texttt{192.168.68.125} & Pi Ethernet cable to the home router. Desktop Wi-Fi \texttt{192.168.68.107}. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ASUS is \texttt{10.0.0.1}. The home router is \texttt{192.168.68.1}.
+
+\subsection{Automatic Wi-Fi Connection and Internet Routing}
+Pi uses a 2.4\,GHz Realtek RTL8188CUS USB adapter. The \texttt{asus-robot} profile has autoconnect enabled, priority 100, unlimited reconnect attempts, permanent MAC and power saving disabled. It does not accept an ASUS default route or DNS. The former home-Wi-Fi profile is retained with autoconnect disabled. These settings are applied; reboot persistence and interruption recovery still need dedicated tests.
+
+Desktop keeps its Internet default route and DNS on home Wi-Fi. ASUS works from its own power supply without a laptop attached; no upstream Internet is required for local Pi communication. Another laptop can join the normal \texttt{AirBears 3} SSID and reach Pi, provided clients are not isolated. The ASUS USB ports are not the laptop's network connection. A laptop using only ASUS Wi-Fi has no Internet through this isolated router unless a separate upstream arrangement is added.

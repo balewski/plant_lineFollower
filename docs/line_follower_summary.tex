@@ -1,0 +1,76 @@
+\documentclass[10pt,letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.65in]{geometry}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,arrows,positioning,calc}
+\usepackage{caption}
+\usepackage[hidelinks]{hyperref}
+\captionsetup{font=small,skip=3pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\pagestyle{empty}
+
+\begin{document}
+\begin{center}
+{\Large\bfseries A Line-Following Robot with Distributed Control}\\[3pt]
+Jan Balewski \hfill September 27, 2026
+\end{center}
+\vspace{-5pt}
+
+The robot carries two
+processors---a Raspberry Pi and a Teensy 4.1---Wi-Fi, three reflectance sensors
+detecting a black line, two motors, auxiliary electronics and a Li-ion battery.
+Desktop connects to the ASUS local network by Ethernet to reduce wireless
+contention; Pi connects by Wi-Fi. UDP carries sensor readings and motor commands
+(Fig.~\ref{fig:summary-network}).
+
+Desktop controls each wheel proportionally: its PWM command increases with the
+signed difference between the center sensor's calibrated blackness and that of
+the corresponding side sensor. A forward bias maintains motion.
+
+Teensy's master hardware clock samples all three sensors at 100\,Hz. Pi streams
+timestamped readings to Desktop, which immediately computes and returns both
+wheel targets. Pi asynchronously receives and validates commands; Teensy executes
+them and returns acknowledgements. Teensy sampling of sensors is independent
+of motor commands and acknowledgements (Fig.~\ref{fig:summary-step}). Both host
+programs use C++17 to reduce CPU overhead and avoid the garbage-collection pauses
+observed in the earlier Python implementation.
+
+The attached 20-second video demonstrates line following with live telemetry and
+run-wide timing quartiles. Median full round trip---ADC start to target receipt
+on Teensy---was 8.6\,ms for completed cycles in the full recorded run.
+
+\begin{center}
+\resizebox{0.85\linewidth}{!}{\input{line_follower_summary_figs/remote_control_topology.tikz}}
+\captionof{figure}{Network connectivity and distribution of control tasks.}
+\label{fig:summary-network}
+\end{center}
+\vspace{-6pt}
+\begin{center}
+\resizebox{0.70\linewidth}{!}{\input{line_follower_summary_figs/remote_control_timing.tikz}}
+\captionof{figure}{One control cycle.
+Time flows downward. The sample-to-ACK interval includes the acknowledgement
+back to Pi; the video's full round trip ends earlier, at Teensy target receipt.}
+\label{fig:summary-step}
+\end{center}
+\clearpage
+\begin{center}
+{\Large\bfseries Robot and Remote-Control Demonstration}
+\end{center}
+\begin{center}
+\includegraphics[width=0.82\linewidth,height=0.43\textheight,keepaspectratio]{line_follower_summary_figs/robot_photo.jpg}
+\captionof{figure}{The assembled robot, with its front three-sensor head,
+two driven wheels and stacked processing, motor-driver and power electronics.}
+\label{fig:summary-photo}
+\end{center}
+\vfill
+\begin{center}
+\includegraphics[width=\linewidth]{line_follower_summary_figs/frame_8.jpg}
+\captionof{figure}{Video frame at $t=8.0$\,s. Live sensor readings and motor
+targets appear at left; the table at right summarizes timing over the full
+recorded run. Directional delays are estimates with the stated clock-alignment
+uncertainty; full round trip is measured on Teensy's clock.}
+\label{fig:summary-video}
+\end{center}
+\end{document}

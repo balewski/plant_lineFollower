@@ -1,0 +1,119 @@
+% Editable electrical connection diagram; coordinates in cm.
+\begin{circuitikz}[american,font=\small,
+  logic/.style={draw=blue!65!black,fill=blue!5,thick},
+  powerwire/.style={draw=red!75!black,very thick,>=stealth},
+  motorwire/.style={draw=magenta,very thick},
+  signalwire/.style={draw=blue!65!black,thick},
+  pintext/.style={font=\scriptsize},
+  smallnote/.style={font=\scriptsize,align=center}]
+\ctikzset{diodes/scale=0.55,resistors/scale=0.55}
+% Stacked cells: series link on the right, pack leads on the left.
+\draw[thick,fill=red!6] (2.1,13.5) rectangle (3.9,14.3);
+\draw[thick,fill=red!6] (2.1,12.5) rectangle (3.9,13.3);
+\node[smallnote] at (3,13.9) {Cell 1\\3.7 V};
+\node[smallnote] at (3,12.9) {Cell 2\\3.7 V};
+\node[pintext] at (2.3,13.9) {$-$}; \node[pintext] at (3.7,13.9) {$+$};
+\node[pintext] at (2.3,12.9) {$+$}; \node[pintext] at (3.7,12.9) {$-$};
+\draw[powerwire,->] (3.9,13.9) -- (4.3,13.9) -- (4.3,12.9) -- (3.9,12.9);
+% Horizontal cylindrical connector to the left of the cells.
+\draw[thick,fill=gray!10] (1,13.71) -- (0.2,13.71)
+  arc[start angle=90,end angle=270,x radius=0.12,y radius=0.36]
+  -- (1,12.99) -- cycle;
+\draw[thick,fill=gray!20] (1,13.35) ellipse[x radius=0.12,y radius=0.36];
+\node[pintext] at (0.6,13.55) {$-$};
+\node[pintext] at (0.6,13.15) {$+$};
+\node[pintext] at (0.6,14.0) {Plug};
+\draw[thick] (2.1,13.9) -- (1.5,13.9) -- (1.5,13.55) -- (1,13.55);
+\draw[powerwire,->] (2.1,12.9) -- (1.7,12.9) -- (1.7,13.15) -- (1,13.15);
+\draw[powerwire] (0.2,13.15) -- (0,13.15) -- (0,12.3) -- (4.5,12.3);
+\node[circle,draw,thick,minimum size=0.7cm,inner sep=0pt] (batteryammeter) at (-0.4,11.1) {A};
+\draw[thick] (0.2,13.55) -- (-0.4,13.55) -- (batteryammeter.north);
+\draw[thick] (batteryammeter.south) -- (-0.4,9.9) node[ground] {};
+\node[smallnote,anchor=west] at (0.15,11.1) {Battery return\\ammeter};
+\node[smallnote] at (2.4,14.8) {Shared Li-ion battery: two cells in series\\7.4 V nominal (2S)};
+% S1 enables the logic branch; S2 additionally enables the motor branch.
+\draw[logic,fill=orange!8] (4.25,9.6) rectangle (6.85,10.8);
+\node[smallnote] at (5.55,10.2) {Logic buck\\OUT: 5.0 V};
+\draw[logic,fill=orange!8] (10.2,9.6) rectangle (12.8,10.8);
+\node[smallnote] at (11.5,10.2) {Motor buck\\OUT: 6.0 V};
+\draw[powerwire] (4.5,12.3) to[nos] (7,12.3);
+\node[smallnote] at (5.75,13.05) {S1: main / logic\\toggle switch};
+\draw[powerwire,->] (7,12.3) to[nos] (10.2,12.3) -- (11.5,12.3) -- (11.5,10.8);
+\node[smallnote] at (8.6,13.05) {S2: motors\\toggle switch};
+\draw[powerwire,->] (7,12.3) node[circ] {} -- (7,11.5) -- (5.55,11.5) -- (5.55,10.8);
+\node[pintext,anchor=west] at (5.7,11.1) {IN+};
+\node[pintext,anchor=west] at (11.65,11.1) {IN+};
+\draw[thick] (6.85,10.2) -- (7.3,10.2) -- (7.3,9.9) node[ground] {};
+\draw[thick] (12.8,10.2) -- (13.25,10.2) -- (13.25,9.9) node[ground] {};
+\draw[motorwire,->,>=stealth] (11.5,9.6) -- (11.5,8.4);
+\node[smallnote,anchor=east] at (11.35,9.15) {Regulated 6 V\\motors only};
+% Shared 5 V rail supplies the Pi and Teensy Vin in parallel.
+\draw[powerwire,->] (5.55,9.6) -- (5.55,8.9) -- (1.4,8.9) -- (1.4,8.3);
+\draw[powerwire,->] (5.55,8.9) node[circ] {} -- (5.55,8.4);
+\node[pintext,above] at (3.3,8.9) {Shared regulated 5 V};
+\node[pintext,anchor=west] at (5.7,8.6) {Vin};
+\node[pintext,anchor=east] at (1.25,8.6) {via USB plug};
+\draw[logic] (0.1,4.3) rectangle (2.7,8.3);
+\node[smallnote] at (1.4,7.8) {Pi Model B Plus};
+\node[pintext,anchor=east] at (2.55,7.05) {TX: GPIO14 (pin 8)};
+\node[pintext,anchor=east] at (2.55,6.45) {RX: GPIO15 (pin 10)};
+\draw[logic] (4.1,1.3) rectangle (7,8.4);
+\node[font=\bfseries] at (5.55,8.05) {Teensy 4.1};
+\draw[signalwire,->] (2.7,7.05) -- (4.1,7.05);
+\draw[signalwire,<-] (2.7,6.45) -- (4.1,6.45);
+\node[pintext,anchor=west] at (4.25,7.05) {0 / RX1};
+\node[pintext,anchor=west] at (4.25,6.45) {1 / TX1};
+\node[smallnote] at (3.4,7.65) {UART\\3.3 V};
+% Shared-edge timing: Teensy output to Pi input, distinct from UART.
+\node[pintext,anchor=east] at (2.55,5.5) {GPIO23 (pin 16)};
+\node[pintext,anchor=west] at (4.25,5.5) {31 / timing out};
+\draw[signalwire] (2.7,5.5) to[R,l=$5\,\mathrm{k}\Omega$] (4.1,5.5);
+% Separate grounded indicator LEDs, each with its own series resistor.
+\node[pintext] at (1.4,4.6) {GPIO24 (pin 18)};
+\draw[signalwire] (1.4,4.3) to[R,l=$5\,\mathrm{k}\Omega$] (1.4,2.9)
+  -- (1.4,2.35);
+\draw[green!55!black,thick] (1.4,2.35) to[led] (1.4,1.15);
+\draw[signalwire] (1.4,1.15) -- (1.4,0.8) node[ground] {};
+\node[smallnote,anchor=east] at (1.12,1.75) {Pi\\LED\\green};
+\node[pintext,anchor=west,align=left] at (4.25,3.65) {29 LED\\white};
+\draw[signalwire] (4.1,3.65) -- (3.3,3.65)
+  to[R,l_=$5\,\mathrm{k}\Omega$] (3.3,2.35);
+\draw[black,thick] (3.3,2.35) to[led] (3.3,1.15);
+\draw[signalwire] (3.3,1.15) -- (3.3,0.8) node[ground] {};
+\draw[thick] (0.25,4.3) -- (0.25,0.8) node[ground] {};
+\node[smallnote,text width=2.8cm] at (8.5,1.6) {USB bridge cut\\VUSB--Vin isolated};
+% Driver pin-level connections.
+\draw[logic,fill=green!5] (10,1.3) rectangle (13,8.4);
+\node[font=\bfseries] at (11.5,8.05) {TB6612FNG};
+\node[pintext,anchor=west] at (11.65,8.65) {VM};
+\foreach \wirey/\pinlabel/\driverlabel in {7.5/3.3 V/VCC,6.2/3/PWMA,5.6/4/AIN1,5.0/5/AIN2,4.4/6/STBY,3.8/7/BIN1,3.2/8/BIN2,2.6/9/PWMB} {
+  \node[pintext,anchor=east] at (6.85,\wirey) {\pinlabel};
+  \node[pintext,anchor=west] at (10.15,\wirey) {\driverlabel};
+  \draw[signalwire,->,>=stealth] (7,\wirey) -- (10,\wirey);
+}
+\node[smallnote] at (8.5,7.85) {3.3 V power};
+\node[smallnote,anchor=south] at (8.5,6.28) {3.3 V logic signals};
+\node[pintext] at (5.55,1.65) {GND};
+\node[pintext] at (11.5,1.65) {GND};
+\draw[thick] (5.55,1.3) -- (5.55,0.8) node[ground] {};
+\draw[thick] (11.5,1.3) -- (11.5,0.8) node[ground] {};
+% Each motor is between two output pins; neither lead is grounded.
+\def\motorRadius{0.425}
+\node[circle,draw,thick,minimum size=2*\motorRadius cm,inner sep=0pt] (ma) at (15,6.3) {M A};
+\node[circle,draw,thick,minimum size=2*\motorRadius cm,inner sep=0pt] (mb) at (15,3.7) {M B};
+\node[smallnote] at (15,7.35) {Left motor};
+\node[smallnote] at (15,2.55) {Right motor};
+\draw[motorwire] (13,6.8) -- (15,6.8) -- (ma.north);
+\draw[motorwire] (13,5.8) -- (15,5.8) -- (ma.south);
+\draw[motorwire] (13,4.2) -- (15,4.2) -- (mb.north);
+\draw[motorwire] (13,3.2) -- (15,3.2) -- (mb.south);
+\node[pintext,anchor=east] at (12.9,6.8) {AO1};
+\node[pintext,anchor=east] at (12.9,5.8) {AO2};
+\node[pintext,anchor=east] at (12.9,4.2) {BO1};
+\node[pintext,anchor=east] at (12.9,3.2) {BO2};
+% Symmetric circular arcs have the motor radius, shifted right for clearance.
+\foreach \motor in {ma,mb} {
+  \draw[thick,<->,>=stealth] (\motor.center) ++(0.25,0)
+    ++(65:\motorRadius) arc[start angle=65,end angle=-65,radius=\motorRadius];
+}
+\end{circuitikz}

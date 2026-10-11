@@ -1,0 +1,37 @@
+\clearpage
+\section{Physical Construction of the Current Robot}
+\label{sec:mechanical-design}
+The robot is a differential-drive platform with two independently powered wheels, a passive rear caster and three downward-facing TCRT5000 reflectance modules. The installed computer is a \textbf{Raspberry Pi Model B Plus Rev 1.2}, with a Realtek RTL8188CUS USB Wi-Fi adapter. One Teensy 4.1 reads the sensors and generates the motor PWM. Desktop and the ASUS router are off the robot.
+
+\subsection{Mechanical Stack and Component Placement}
+The current mechanical source package is \path{cad_parts/assembly_sep24/}. Its native part files, rather than an overview snapshot, define the latest geometry. Printed parts use PETG. Figure~\ref{fig:current-physical} summarizes placement without implying measured clearances or a completed assembly test.
+
+\begin{figure}[H]
+\centering
+\resizebox{.64\linewidth}{!}{\input{current_robot_physical.tikz}}
+\caption{Current mechanical arrangement, schematic and not to scale. The front sensor head reads the floor; the rear caster is passive. The removable roof is shown separated for visibility. Dimensions below are CAD values, not measurements of the assembled robot.}
+\label{fig:current-physical}
+\end{figure}
+
+\begin{table}[H]
+\centering\small
+\caption{Current mechanical parts and their roles.}
+\label{tab:current-mechanics}
+\begin{tabular}{@{}L{3.2cm}L{13.0cm}@{}}
+\toprule
+Part & Current design description \\
+\midrule
+Lower deck & Nominal $110\times115\times4$\,mm, with a tapered rear. Supports the Pi, battery, motor clamps, rear caster and switches; utility openings and cable clamps provide routing access. \\
+Pillar frames & Front and aft braced pairs support the upper electronics deck. The active design attaches directly to the lower deck; the old T-head joints are historical parts. \\
+Upper deck & Nominal $110\times115\times3$\,mm, with Teensy rails and retaining clasp, Power A/B mounting areas, ammeter opening and inclined driver-board supports. Service openings provide access beneath components. \\
+Sensor holder & Three module positions A/B/C, interpreted as left/center/right when looking forward. Mounting arms attach below the front deck. Physical channel order and working height must agree with calibration. \\
+Roof & A 2\,mm plate with a 15\,mm perimeter rim and four 50\,mm columns. All four column-to-brim transitions are analytic cones. The Power A brim is 25\,mm long; the other brim arms remain 15\,mm. Nominal bracket clearance to the upper deck is 0.4\,mm. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{CAD Sources and Limits of the Drawings}
+\label{sec:cad-visualization}
+The active native models are \path{main_lower_deck.FCStd}, \path{main_pillars.FCStd}, \path{main_upper_deck.FCStd}, \path{main_photo_sensor.FCStd} and \path{main_roof.FCStd}, all in the current package. Overview renders can lag part revisions and are not manufacturing masters. The roof's detailed dimensions are in \path{cad_parts/assembly_sep24/roof/README.md}.
+
+Historical September 15 views and PETG estimates are retained in Appendix~\ref{app:historical-cad}; the motion model is in Appendix~\ref{sec:motion-control}. CAD checks do not establish physical fit, printed completion, assembled mass or loaded center of gravity.
