@@ -43,7 +43,7 @@ echo "Checking plant status"
 
 echo "Copying calibration from the Pi"
 mkdir -p "$PLANT_BIN"
-scp -4 -o ConnectTimeout=8 "${PI_USER}@${PI_HOST}:$PI_CALIB" "$PLANT_BIN/photo3_calib.latest.json"
+scp -4 -o ConnectTimeout=8 "${PI_SSH}:$PI_CALIB" "$PLANT_BIN/photo3_calib.latest.json"
 
 remote_args=(--duration "$duration")
 if [[ "$motors" -eq 1 ]]; then

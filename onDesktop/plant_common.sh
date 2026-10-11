@@ -6,6 +6,12 @@ PLANT_SRC="$PLANT_ROOT/lineFollowerDistributed"
 PLANT_BIN="$PLANT_ROOT/lineFollowerDistributedBin"
 PI_HOST="${PI_HOST:-10.0.0.20}"
 PI_USER=pi
+case "$PI_HOST" in
+    10.0.0.20) PI_SSH=pi2 ;;
+    10.0.0.120) PI_SSH=pi2-asus-eth ;;
+    192.168.68.220) PI_SSH=pi2-home-eth ;;
+    *) PI_SSH="${PI_USER}@${PI_HOST}" ;;
+esac
 PI_ROOT=/home/pi/plant_lineFollower
 PI_SRC=$PI_ROOT/lineFollowerDistributed
 PI_BIN=$PI_ROOT/lineFollowerDistributedBin
@@ -14,7 +20,7 @@ ARDUINO_CLI="${ARDUINO_CLI:-/Users/balewski/shared_volumes/2026_robot1/robot0/te
 ARDUINO_DATA="${ARDUINO_DATA:-/Users/balewski/shared_volumes/2026_robot1/robot0/teensy41/tools/arduino-data}"
 
 ssh_pi() {
-    ssh -4 -o ConnectTimeout=8 "${PI_USER}@${PI_HOST}" "$@"
+    ssh -4 -o ConnectTimeout=8 "$PI_SSH" "$@"
 }
 
 die() {
@@ -23,10 +29,10 @@ die() {
 }
 
 sync_sources() {
-    echo "Copying sources to pi@${PI_HOST}:$PI_SRC"
+    echo "Copying sources to ${PI_SSH}:$PI_SRC"
     ssh_pi "mkdir -p '$PI_SRC'"
     rsync -a --delete -e "ssh -4 -o ConnectTimeout=8" \
-        "$PLANT_SRC/" "${PI_USER}@${PI_HOST}:$PI_SRC/"
+        "$PLANT_SRC/" "${PI_SSH}:$PI_SRC/"
 }
 
 build_mac_operator() {

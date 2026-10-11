@@ -35,4 +35,4 @@ fi
 if pkill -INT -f \$bin/gpio_clock; then
     echo 'Interrupted gpio_clock'
 fi
-" || echo "Could not reach pi@${PI_HOST}"
+" || echo "Could not reach ${PI_SSH}"

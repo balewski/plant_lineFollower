@@ -16,7 +16,7 @@ done
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/plant_common.sh"
 
 ready=1
-echo "Pi Wi-Fi ${PI_HOST}"
+echo "${PI_SSH} Wi-Fi ${PI_HOST}"
 if ssh_pi "true" 2>/dev/null; then
     echo "  connection: up"
 else

@@ -17,7 +17,7 @@
     \textbf{Desktop}\\[2pt]
     Wi-Fi \texttt{192.168.68.107}\\
     Ethernet \texttt{10.0.0.2}};
-\node[pi] (pi) at (0,-5.6) {\textbf{Pi}};
+\node[pi] (pi) at (0,-5.6) {\textbf{pi2}};
 \node[asus] (asus) at (11.2,-5.6) {%
     \textbf{ASUS}\\[2pt]
     \texttt{10.0.0.1}\\
