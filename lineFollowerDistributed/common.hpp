@@ -185,8 +185,11 @@ struct Config {
     int port = 5000, peer_port = 5001, rate = 100, freshness = 100, max_pwm = 128,
         serial_timeout = 80;
     double duration = 120, speed = .5, n_sigma = 2.5;
-    bool motors = false, simulation = false, match_motor_wire_size = false, timing = false;
-    fs::path root, output, calibration;
+    bool motors = false, simulation = false, match_motor_wire_size = false, timing = false,
+        clock_matched = false;
+    double pi_uptime_s = 0, latency_uncertainty_ms = 0;
+    fs::path root, output, calibration, boot, clock_file;
+    std::string clock_note;
 };
 inline double argument_number(const std::string &s) {
     size_t pos = 0;
@@ -211,10 +214,10 @@ inline Config config(int argc, char **argv, bool pi) {
     c.max_pwm = integer(number(member(j, "max_pwm")));
     c.duration = number(member(j, "duration"));
     c.output = c.root / "out";
-    // Sensor calibration is produced on the Pi by photo3_calib.py. The Mac
-    // operator must be given the same file with --calibration.
+    // The Pi controller reads the calibration file and sends those bytes to the
+    // desktop operator in the UDP initialization message.
     if (pi)
-        c.calibration = "/home/pi/plant_lineFollower/onPi/localControl/out/photo3_calib.latest.json";
+        c.calibration = "/home/pi/plant_lineFollower/config/photo3_calib.json";
     else
         c.calibration = c.root / "calibration.json";
     if (pi) {
@@ -233,18 +236,15 @@ inline Config config(int argc, char **argv, bool pi) {
             c.motors = true;
             continue;
         }
-        if (k == "--timingTeensyPi") {
-            c.timing = true;
-            continue;
-        }
         if (k == "--help") {
             std::cout
                 << "C++ line follower; motors DISABLED by default.\n--bind IP|auto --peer IP --port N "
                    "--peer-port N --rate 1..100 --freshness-ms 20..1000\n--duration SECONDS "
                    "--max-pwm 1..255 --output DIR --calibration FILE\nPi: --serial DEVICE "
                    "--serial-timeout-ms N --polarity ff|fr|rf|rr --match-motor-wire-size\nDesktop: --speed 0..1 --n-sigma "
-                   "N\nReal motor output requires --enable-motors on BOTH programs.\n"
-                   "--timingTeensyPi runs the Pi-Teensy GPIO clock measurement; omit it to skip.\n";
+                   "N\nThe Pi controller sends boot.json, clock_calib.json, and photo3_calib.json over UDP at job start.\n"
+                   "Real motor output requires --enable-motors on BOTH programs.\n"
+                   "Clock delay is measured by onDesktop/runClocksCalib. A robot run uses that file only when its hash8 matches boot.json.\n";
             std::exit(0);
         }
         require(i + 1 < argc, "Missing value for " + k);
@@ -261,6 +261,12 @@ inline Config config(int argc, char **argv, bool pi) {
             c.output = v;
         else if (k == "--calibration")
             c.calibration = v;
+        else if (k == "--boot" && !pi)
+            c.boot = v;
+        else if (k == "--clock" && !pi)
+            c.clock_file = v;
+        else if (k == "--pi-uptime-s" && !pi)
+            c.pi_uptime_s = argument_number(v);
         else if (k == "--port")
             c.port = integer(argument_number(v));
         else if (k == "--peer-port")
@@ -295,11 +301,13 @@ inline Config config(int argc, char **argv, bool pi) {
                     std::nearbyint(255 * c.speed) <= c.max_pwm,
                 "Invalid speed/noise/PWM");
     }
-    c.hash = sha256(c.calibration);
     require(!c.simulation || (pi && c.bind=="127.0.0.1" && c.peer=="127.0.0.1" &&
             (c.serial.rfind("/dev/pts/",0)==0 || c.serial.rfind("/dev/ttys",0)==0)),
             "Simulation bypass requires loopback and a virtual serial device");
-    hash_bytes(c.hash);
+    if (pi) {
+        c.hash = sha256(c.calibration);
+        hash_bytes(c.hash);
+    }
     if (c.bind == "auto") {
         require(!pi, "Automatic bind is a Desktop option; use the Pi SSH launcher");
         c.bind = route_local_ipv4(c.peer, c.peer_port);
@@ -317,7 +325,10 @@ inline Object config_json(const Config &c) {
             {"duration", jnum(c.duration)},
             {"enable_motors", Json(c.motors)},
             {"match_motor_wire_size", Json(c.match_motor_wire_size)},
-            {"calibration_sha256", Json(c.hash)}};
+            {"calibration_sha256", Json(c.hash)},
+            {"clock_matched", Json(c.clock_matched)},
+            {"latency_uncertainty_ms", jnum(c.latency_uncertainty_ms)},
+            {"clock_note", Json(c.clock_note)}};
 }
 // All event and metric storage is allocated before the loop. No formatting/I/O in it.
 enum Metric {
@@ -331,6 +342,7 @@ enum Metric {
     COMPUTE,
     LATENESS,
     DELIVERY,
+    TRANSMIT,
     METRIC_COUNT
 };
 inline constexpr const char *metric_names[] = {"loop_gap_ms",
@@ -342,7 +354,8 @@ inline constexpr const char *metric_names[] = {"loop_gap_ms",
                                                "command_arrival_interval_ms",
                                                "compute_ms",
                                                "clock_query_rtt_ms",
-                                               "delivery_age_upper_bound_ms"};
+                                               "delivery_age_upper_bound_ms",
+                                               "transmit_latency_ms"};
 enum Count {
     SAMPLES,
     MISSED,

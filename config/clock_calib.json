@@ -1,0 +1,53 @@
+{
+  "hash8": "c840842c",
+  "local_time": "2026-10-11T09:57:00-07:00",
+  "uptime_s": 1047.45,
+  "mac_pi": {
+    "ethernet": {
+      "valid": 100,
+      "failed": 0,
+      "rtt_ms": {
+        "min": 0.585,
+        "median": 0.761
+      },
+      "half_width_ms": {
+        "median": 0.3805
+      },
+      "midpoint_ms": {
+        "median": 510049758.4395
+      }
+    },
+    "wifi": {
+      "valid": 100,
+      "failed": 0,
+      "rtt_ms": {
+        "min": 1.483,
+        "median": 2.4325
+      },
+      "half_width_ms": {
+        "median": 1.21625
+      },
+      "midpoint_ms": {
+        "median": 510049758.66875
+      }
+    }
+  },
+  "pi_teensy": {
+    "complete": true,
+    "valid_edges": 200,
+    "requested_edges": 200,
+    "stop_confirmed": true,
+    "first_pulse_offset_s": -5.4837895,
+    "nominal_offset_s": -5.483775480637,
+    "reference_pi_s": 1038.534011,
+    "offset_change_us": {
+      "q1": 4.5,
+      "median": 14.5,
+      "q3": 22.5
+    },
+    "drift_ppm": 3.311382,
+    "detrended_residual_range_us": 42.596609,
+    "teensy_bracket_max_us": 1.0,
+    "userspace_delivery_median_us": 137.0
+  }
+}

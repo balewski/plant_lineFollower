@@ -15,7 +15,7 @@ esac
 PI_ROOT=/home/pi/plant_lineFollower
 PI_SRC=$PI_ROOT/lineFollowerDistributed
 PI_BIN=$PI_ROOT/lineFollowerDistributedBin
-PI_CALIB=$PI_ROOT/onPi/localControl/out/photo3_calib.latest.json
+PI_CALIB=$PI_ROOT/config/photo3_calib.json
 ARDUINO_CLI="${ARDUINO_CLI:-/Users/balewski/shared_volumes/2026_robot1/robot0/teensy41/tools/arduino-cli}"
 ARDUINO_DATA="${ARDUINO_DATA:-/Users/balewski/shared_volumes/2026_robot1/robot0/teensy41/tools/arduino-data}"
 
@@ -36,11 +36,11 @@ sync_sources() {
 }
 
 build_mac_operator() {
-    echo "Compiling Mac operator"
+    echo "Compiling Mac operator and clock_probe"
     make -C "$PLANT_SRC" ROLE=operator
 }
 
 build_pi_controller() {
-    echo "Compiling Pi controller and gpio_clock"
+    echo "Compiling Pi controller, gpio_clock and clock_probe"
     ssh_pi "make -C '$PI_SRC' ROLE=controller"
 }

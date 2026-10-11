@@ -13,7 +13,7 @@ Figure~\ref{fig:desktop-pi-clock-network} shows the actual arrangement. Desktop 
 \label{fig:desktop-pi-clock-network}
 \end{figure}
 
-The standalone package is \path{2026_measure_pi_desktop_clock/} on Desktop, alongside the robot and operator packages. Its C++17 \texttt{clock\_probe} executable runs on both processors; Pi's copy is under \path{/home/pi/robot0/measure_pi_desktop_clock/}. Python launches the processes and analyzes saved data, outside the timestamp-critical path. C++ provides direct socket and timestamp-control access without an interpreter in the acquisition loop; it does not make either OS deterministic.
+The September 28 acquisition used the standalone package \path{2026_measure_pi_desktop_clock/} on Desktop. Its C++17 \texttt{clock\_probe} executable ran on both processors; Pi's copy was under \path{/home/pi/robot0/measure_pi_desktop_clock/}. The same probe now lives in \path{lineFollowerDistributed/clock_probe.cpp} and is started by \texttt{runClocksCalib}. Python launched the September processes and analyzed saved data, outside the timestamp-critical path. C++ provides direct socket and timestamp-control access without an interpreter in the acquisition loop; it does not make either OS deterministic.
 
 Two Pi UDP servers bind explicitly to \texttt{eth0} and \texttt{wlan0}, using ports 53120 and 53121. Desktop binds to \texttt{en5}. Incoming interface indices are checked, preventing a nominal Wi-Fi reply from silently taking Ethernet. Probes alternate between paths at approximately 20 probes/s/path, reversing pair order. Each request/reply application frame is 192 bytes, with session, probe and server-instance identifiers plus timestamps and diagnostics. This size differs from the robot's 82/36-byte SENSOR/COMMAND pair.
 

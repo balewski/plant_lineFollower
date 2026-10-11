@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Simple line follower with reverse steering using out/photo3_calib.latest.json.
+"""Simple line follower with reverse steering using config/photo3_calib.json.
 
 Normalize each sensor: white=0, black=1. Left wheel uses 0.5+B-A;
 right wheel uses 0.5+B-C, each limited to -1..1. nSigma controls tape detection
@@ -17,38 +17,32 @@ import time
 import serial
 from photo3_calib import SENSORS, acknowledged, read_adc, verify, stop_signal
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[2]
 STATUS_PERIOD = 0.2  # Approximately 5 Hz console output.
 
 
 def load_calibration(path):
+    """Read each sensor's white and black mean and standard deviation."""
     try:
         data = json.loads(Path(path).read_text())
-        if (data.get("status") != "complete" or data.get("valid") is not True
-                or data.get("black_is_high") is not True or data.get("adc_bits") != 10):
-            raise ValueError("Need a complete, valid, black-high, 10-bit calibration.")
-        endpoints = []
-        for name, analog, pin in SENSORS:
+        endpoints, sigmas = [], []
+        for name, _, _ in SENSORS:
             sensor = data["sensors"][name]
-            if (sensor.get("valid") is not True or sensor.get("analog_pin") != analog
-                    or sensor.get("gpio_pin") != pin):
-                raise ValueError(f"Invalid calibration or wrong pin mapping for sensor {name}.")
-            low, high = sensor["low_white"]["mean"], sensor["high_black"]["mean"]
-            if (isinstance(low, bool) or isinstance(high, bool)
-                    or not isinstance(low, (int, float)) or not isinstance(high, (int, float))
-                    or not math.isfinite(low) or not math.isfinite(high)
-                    or not 0 <= low < high <= 1023):
-                raise ValueError(f"Invalid low/high means for sensor {name}.")
+            pair, deviations = [], []
             for surface in ("low_white", "high_black"):
-                sigma = sensor[surface]["stddev"]
-                if (isinstance(sigma, bool) or not isinstance(sigma, (int, float))
-                        or not math.isfinite(sigma) or sigma < 0):
-                    raise ValueError(f"Invalid {surface} standard deviation for sensor {name}.")
-            endpoints.append((float(low), float(high)))
-        polarity = data["configuration"]["polarity"]
-        if polarity not in ("ff", "fr", "rf", "rr"):
-            raise ValueError("Invalid motor polarity in calibration.")
-        return data, tuple(endpoints), polarity
+                value, sigma = sensor[surface]["mean"], sensor[surface]["stddev"]
+                if (isinstance(value, bool) or isinstance(sigma, bool)
+                        or not isinstance(value, (int, float)) or not isinstance(sigma, (int, float))
+                        or not math.isfinite(value) or not math.isfinite(sigma) or sigma < 0):
+                    raise ValueError(f"Invalid {surface} mean or standard deviation for sensor {name}.")
+                pair.append(float(value))
+                deviations.append(float(sigma))
+            low, high = pair
+            if not 0 <= low < high <= 1023:
+                raise ValueError(f"Invalid low/high means for sensor {name}.")
+            endpoints.append((low, high))
+            sigmas.append(tuple(deviations))
+        return tuple(endpoints), tuple(sigmas)
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
         raise RuntimeError(f"Cannot use calibration {path}: {exc}") from exc
 
@@ -194,10 +188,12 @@ def parse_args(argv=None):
                              "(default: 2.5; 0 uses white means and disables update filtering)")
     parser.add_argument("--rate", type=float, default=20,
                         help="Target control rate, 10..100 Hz (default: 20)")
-    parser.add_argument("--polarity", choices=("ff", "fr", "rf", "rr"),
-                        help="Wheel wiring signs (default: polarity stored in calibration)")
+    parser.add_argument("--polarity", choices=("ff", "fr", "rf", "rr"), default="rr",
+                        help="Wheel wiring signs (default: rr)")
     parser.add_argument("--port", default="/dev/serial0")
-    parser.add_argument("--calibration", type=Path, default=ROOT/"out/photo3_calib.latest.json")
+    parser.add_argument("--calibration", type=Path,
+                        default=ROOT / "config" / "photo3_calib.json",
+                        help="Sensor means and standard deviations (default: config/photo3_calib.json)")
     parser.add_argument("--check", action="store_true",
                         help="Validate calibration, firmware and ADC while remaining stopped")
     args = parser.parse_args(argv)
@@ -218,16 +214,12 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
     # Reject invalid calibration before opening the hardware.
-    calibration, endpoints, stored_polarity = load_calibration(args.calibration)
-    args.polarity = args.polarity or stored_polarity
+    endpoints, sigmas = load_calibration(args.calibration)
     print("Arguments (effective values):", flush=True)
     option_names = {"duration": "time", "n_sigma": "nSigma"}
     for name, value in vars(args).items():
         print(f"  --{option_names.get(name, name)} = {value}", flush=True)
-    sigmas = tuple((calibration["sensors"][name]["low_white"]["stddev"],
-                    calibration["sensors"][name]["high_black"]["stddev"])
-                   for name, _, _ in SENSORS)
-    print(f"Calibration: {args.calibration} (started {calibration.get('started', 'unknown')})")
+    print(f"Calibration: {args.calibration}")
     print(f"Wheel speed magnitude <= {args.speed:g}; reverse steering enabled; "
           f"polarity {args.polarity}; "
           f"nSigma {args.n_sigma:g}; "

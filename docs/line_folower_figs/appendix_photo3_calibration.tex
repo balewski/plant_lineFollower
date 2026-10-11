@@ -58,9 +58,9 @@ A channel is accepted only when all of the following hold:
     \item Each surface contributes at least two readings in at least $\max(2,\lceil N/2\rceil)$ distinct sweeps. At $N=6$, both surfaces must recur in at least three sweeps.
     \item No more than half of all full-sweep readings lie between the two endpoint bands.
 \end{itemize}
-The overall calibration is valid only after a completed run with all three channels accepted and the final motor stop acknowledged. An interruption stops the robot at its current heading and retains partial results.
+The overall calibration is valid only after a completed run with all three channels accepted and the final motor stop acknowledged. An interruption stops the robot at its current heading. The saved file then holds the summary of whatever full sweeps finished, without the raw readings.
 
-The resulting endpoint means and deviations feed the normalization and uncertainty model in Section~\ref{sec:local-controller}. The two latest output files are \path{robot0/out/photo3_calib.latest.json}, containing raw samples, statistics, validity and the calibration start time to one-second precision, and \path{robot0/out/photo3_calib.latest.txt}, containing the readable summary. Each run replaces these latest results. The report also stores the midpoint $(\mu_{i,W}+\mu_{i,B})/2$ as descriptive metadata.
+The resulting endpoint means and deviations feed the normalization and uncertainty model in Section~\ref{sec:local-controller}. Each run replaces \path{/home/pi/plant_lineFollower/config/photo3_calib.json}. That file stores the printed summary: for each sensor, the white and black mean, sample standard deviation and count, plus validity, the motor polarity, the boot \texttt{hash8}, the Pi local time and seconds since boot. It does not store individual ADC readings.
 
 \subsection{Parameters}
 \begin{table}[H]

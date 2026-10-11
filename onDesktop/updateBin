@@ -3,7 +3,7 @@
 set -euo pipefail
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     echo "updateBin [--pi 10.0.0.20]"
-    echo "Compile both programs. Leave the Teensy firmware as it is."
+    echo "Compile the operator, controller, gpio_clock and clock_probe. Leave the Teensy firmware as it is."
     exit 0
 fi
 exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/build_plant.sh" "$@"

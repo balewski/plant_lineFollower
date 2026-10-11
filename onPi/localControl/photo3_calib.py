@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""Calibrate A/B/C photo sensors with slow alternating ~120-degree turns.
+"""Calibrate A/B/C photo sensors with slow alternating turns.
 
-Place the robot symmetrically over a straight black tape on white floor.
+Start with the robot centered on a straight black tape on a white floor,
+sensor B on the tape. The full sweep is about 120 degrees, from one side of
+that center to the other. The first turn and the last turn are half of that
+span, about 60 degrees: out to one end, then back to center after the sweeps.
 Black is assumed HIGH ADC; white is LOW. Run only one Teensy client at a time.
 Defaults: 6 sweeps, speed 0.15, polarity rr, 40 samples/s.
 Angles are timing estimates based on 180 degrees in 1.07 s at speed 0.5.
@@ -20,8 +23,12 @@ import sys
 import time
 
 import serial
+import subprocess
 
 SENSORS = (("A", "A11", 25), ("B", "A12", 26), ("C", "A13", 27))
+CONFIG = Path("/home/pi/plant_lineFollower/config")
+BOOT = CONFIG / "boot.json"
+RESULT = CONFIG / "photo3_calib.json"
 
 
 def exchange(port, command):
@@ -99,13 +106,15 @@ def run_sweeps(port, args, record, checkpoint=lambda: None,
 
     try:
         acknowledged(port, "STOPALL")
-        leg("position_left", 0, "left", args.sweep_time / 2)
+        # Centered start. Half the full span reaches one end; the same half returns.
+        half = args.sweep_time / 2
+        leg("position_left", 0, "left", half)
         for sweep in range(1, args.sweeps + 1):
             direction = "right" if sweep % 2 else "left"
             leg("sweep", sweep, direction, args.sweep_time)
         # Odd counts end on the right; even counts end on the left.
         direction = "left" if args.sweeps % 2 else "right"
-        leg("return_center", 0, direction, args.sweep_time / 2)
+        leg("return_center", 0, direction, half)
     finally:
         # Do not attempt an automatic return to center after an error or Ctrl+C.
         acknowledged(port, "STOPALL")
@@ -197,7 +206,8 @@ def parse_args(argv=None):
     parser.add_argument("--port", default="/dev/serial0")
     parser.add_argument("--polarity", choices=("ff", "fr", "rf", "rr"), default="rr")
     parser.add_argument("--speed", type=float, default=.15, help="PWM scale, 0 < speed <= 1 (default: .15)")
-    parser.add_argument("--sweeps", type=int, default=6, help="One-way 120-degree passes (default: 6)")
+    parser.add_argument("--sweeps", type=int, default=6,
+                        help="One-way full-span passes after the opening half turn (default: 6)")
     parser.add_argument("--turn180", type=float, default=1.07,
                         help="Measured 180-degree time at speed 0.5 (default: 1.07 s)")
     parser.add_argument("--sweep-time", type=float,
@@ -246,9 +256,42 @@ def write_text(path, text):
         temporary.unlink(missing_ok=True)
 
 
-def save_report(out, report):
-    """Replace the two latest files; raw readings are part of the JSON."""
-    report["sample_count"] = len(report["samples"])
+def boot_stamp():
+    """Copy this boot's hash8 and record seconds since boot. No network clock."""
+    try:
+        subprocess.run(["/home/pi/plant_lineFollower/config/write_boot_stamp.sh"], check=True)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise RuntimeError(f"Cannot write boot stamp: {exc}") from exc
+    boot = json.loads(BOOT.read_text())
+    if not re.fullmatch(r"[0-9a-f]{8}", boot.get("hash8", "")):
+        raise RuntimeError(f"Boot stamp {BOOT} has no hash8")
+    report_time = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    uptime = float(Path("/proc/uptime").read_text().split()[0])
+    return {"hash8": boot["hash8"], "local_time": report_time, "uptime_s": uptime}
+
+
+def summary_document(report):
+    """Printed endpoint summary plus this boot's hash and local clock. No raw readings."""
+    stamp = boot_stamp()
+    document = {"hash8": stamp["hash8"], "local_time": stamp["local_time"],
+                "uptime_s": stamp["uptime_s"], "started": report["started"],
+                "status": report["status"], "valid": report["valid"],
+                "black_is_high": report["black_is_high"], "adc_bits": report["adc_bits"],
+                "configuration": {"polarity": report["configuration"]["polarity"]}}
+    if "sensors" in report:
+        document["sensors"] = {
+            name: {"analog_pin": result["analog_pin"], "gpio_pin": result["gpio_pin"],
+                   "valid": result["valid"], "issues": result["issues"],
+                   "low_white": {key: result["low_white"][key] for key in ("mean", "stddev", "n")},
+                   "high_black": {key: result["high_black"][key] for key in ("mean", "stddev", "n")}}
+            for name, result in report["sensors"].items()}
+    if report.get("error"):
+        document["error"] = report["error"]
+    return document
+
+
+def save_report(report):
+    """Replace the calibration JSON with the printed summary."""
     if "sensors" in report and not report["configuration"]["check"]:
         summary = format_summary(report["sensors"])
     elif report["configuration"]["check"]:
@@ -261,9 +304,7 @@ def save_report(out, report):
         summary += "Run incomplete: " + report["error"] + "\n"
     if report["status"] == "complete" and not report["valid"]:
         summary += "Calibration needs another run: check that every sensor crosses both surfaces.\n"
-    write_text(out / "photo3_calib.latest.json",
-               json.dumps(report, indent=2, allow_nan=False) + "\n")
-    write_text(out / "photo3_calib.latest.txt", summary)
+    write_text(RESULT, json.dumps(summary_document(report), indent=2, allow_nan=False) + "\n")
     return summary
 
 
@@ -272,17 +313,18 @@ def main(argv=None):
     started = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGTSTP):
         signal.signal(sig, stop_signal)
-    out = Path(__file__).resolve().parent / "out"
-    out.mkdir(parents=True, exist_ok=True)
+    CONFIG.mkdir(parents=True, exist_ok=True)
     rows = []
     report = {"started": started,
               "configuration": vars(args), "status": "starting", "valid": False,
               "black_is_high": True, "adc_bits": 10, "samples": rows, "sample_count": 0,
               "method": "2nd/98th percentile anchors; bottom/top 20% amplitude bands; sample stddev",
-              "notes": "Angles are timed estimates; initial/final positioning is excluded from statistics."}
-    print("Results:", out / "photo3_calib.latest.json", "and photo3_calib.latest.txt", flush=True)
-    print(f"Polarity {args.polarity}; speed {args.speed:g}; {args.sweeps} passes; "
-          f"{args.sweep_time:.3f} s per ~120-degree sweep; target {args.rate:g} Hz.", flush=True)
+              "notes": "Start centered on the line. First and last turns are half the full sweep span and are excluded from statistics."}
+    print("Results:", RESULT, flush=True)
+    half = args.sweep_time / 2
+    print(f"Polarity {args.polarity}; speed {args.speed:g}; {args.sweeps} full passes; "
+          f"{args.sweep_time:.3f} s per full sweep; first and last turns {half:.3f} s "
+          f"(half span) from a centered start; target {args.rate:g} Hz.", flush=True)
     if args.timing_estimated:
         print("Timing assumes turn rate scales with PWM. If turns stall or miss the arc, "
               "adjust --speed and/or --sweep-time.", flush=True)
@@ -295,7 +337,7 @@ def main(argv=None):
         return 1
     try:
         try:
-            save_report(out, report)
+            save_report(report)
             time.sleep(.3)
             port.reset_input_buffer()
             version, initial = verify(port)
@@ -309,10 +351,10 @@ def main(argv=None):
                 time.sleep(args.countdown)
                 report["status"] = "running"
                 # Checkpoints are written after STOPALL between legs.
-                run_sweeps(port, args, rows.append, lambda: save_report(out, report))
+                run_sweeps(port, args, rows.append, lambda: save_report(report))
                 report["status"] = "complete"
         except KeyboardInterrupt:
-            report.update(status="interrupted", error="Interrupted; partial readings saved.")
+            report.update(status="interrupted", error="Interrupted before the calibration finished.")
         except (OSError, RuntimeError, serial.SerialException) as exc:
             report.update(status="error", error=str(exc))
         finally:
@@ -327,9 +369,9 @@ def main(argv=None):
         results = analyze(rows, args.sweeps, args.min_contrast)
         report.update(sensors=results,
                       valid=report["status"] == "complete" and all(r["valid"] for r in results.values()))
-        summary = save_report(out, report)
+        summary = save_report(report)
         print(summary, end="")
-        print("Saved photo3_calib.latest.json and photo3_calib.latest.txt in", out)
+        print("Saved", RESULT)
     finally:
         port.close()
     if report["status"] == "check_only":

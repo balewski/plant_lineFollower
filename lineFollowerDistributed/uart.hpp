@@ -151,7 +151,10 @@ struct UART {
             require(v.find(s) != std::string::npos, "Unsupported firmware");
         require(exchange("STATUSAB") == "MOTORS left=0; right=0; standby=1",
                 "Initial standby not confirmed");
-        // Establish the device/Pi clock relation before starting autonomous ADCs.
+        refresh_clock();
+    }
+    void refresh_clock() {
+        // The map expires 2 s after this reply. Refresh it again before a stream.
         start("CLOCK", CLOCK_JOB, ns());
         Reply r;
         while (true) {

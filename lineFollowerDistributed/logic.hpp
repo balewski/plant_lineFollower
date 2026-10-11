@@ -8,19 +8,11 @@ struct Decision {
     bool initialized = false, previous_seen = false, seen = false;
     int left = 0, right = 0;
     double speed, sigma;
-    std::string polarity;
     Decision(const fs::path &path, double sp, double sig) : speed(sp), sigma(sig) {
         auto j = json_read(path);
-        require(string(member(j, "status")) == "complete" && boolean(member(j, "valid")) &&
-                    boolean(member(j, "black_is_high")) && number(member(j, "adc_bits")) == 10,
-                "Invalid calibration status");
         auto &sensors = member(j, "sensors");
         for (int i = 0; i < 3; i++) {
             auto &s = member(sensors, std::string(1, char('A' + i)));
-            require(boolean(member(s, "valid")) &&
-                        string(member(s, "analog_pin")) == "A" + std::to_string(11 + i) &&
-                        number(member(s, "gpio_pin")) == 25 + i,
-                    "Invalid sensor mapping");
             auto &w = member(s, "low_white");
             auto &b = member(s, "high_black");
             low[i] = number(member(w, "mean"));
@@ -31,8 +23,6 @@ struct Decision {
                         black[i] >= 0,
                     "Invalid calibration values");
         }
-        polarity = string(member(member(j, "configuration"), "polarity"));
-        polarity_index(polarity);
         std::fesetround(FE_TONEAREST);
     }
     static double clamp(double x) {

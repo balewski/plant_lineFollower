@@ -85,6 +85,57 @@ inline Frame hello(Kind k, U64 sid, U64 seq, const Config &c) {
     std::copy(h.begin(), h.end(), f.bytes.begin() + 36);
     return f;
 }
+// One datagram, sent with each JOB_READY. Raw file bytes, so the desktop hash matches the Pi file.
+struct InitFiles {
+    double uptime_s = 0;
+    std::string boot, clock, photo;
+};
+inline void store_be(uint8_t *p, U64 v, size_t n) {
+    for (size_t i = 0; i < n; i++)
+        p[n - 1 - i] = uint8_t(v >> (8 * i));
+}
+inline U64 load_be(const uint8_t *p, size_t n) {
+    U64 v = 0;
+    for (size_t i = 0; i < n; i++)
+        v = (v << 8) | p[i];
+    return v;
+}
+inline std::vector<uint8_t> pack_init(const InitFiles &in) {
+    require(in.photo.size() > 0 && in.photo.size() <= 20000 && in.boot.size() <= 20000 &&
+                in.clock.size() <= 20000,
+            "Initialization files are empty or too large");
+    U64 ms = U64(std::llround(in.uptime_s * 1000));
+    std::vector<uint8_t> out(27 + in.boot.size() + in.clock.size() + in.photo.size());
+    std::memcpy(out.data(), "LFINIT", 6);
+    out[6] = 1;
+    store_be(out.data() + 7, ms, 8);
+    store_be(out.data() + 15, in.boot.size(), 4);
+    store_be(out.data() + 19, in.clock.size(), 4);
+    store_be(out.data() + 23, in.photo.size(), 4);
+    auto at = out.data() + 27;
+    std::memcpy(at, in.boot.data(), in.boot.size());
+    at += in.boot.size();
+    std::memcpy(at, in.clock.data(), in.clock.size());
+    at += in.clock.size();
+    std::memcpy(at, in.photo.data(), in.photo.size());
+    return out;
+}
+inline bool unpack_init(const uint8_t *p, size_t n, InitFiles &out) {
+    if (n < 27 || std::memcmp(p, "LFINIT", 6) || p[6] != 1)
+        return false;
+    U64 boot_n = load_be(p + 15, 4), clock_n = load_be(p + 19, 4), photo_n = load_be(p + 23, 4);
+    if (boot_n > 20000 || clock_n > 20000 || photo_n == 0 || photo_n > 20000 ||
+        n != 27 + boot_n + clock_n + photo_n)
+        return false;
+    out.uptime_s = double(load_be(p + 7, 8)) / 1000;
+    const uint8_t *at = p + 27;
+    out.boot.assign(reinterpret_cast<const char *>(at), boot_n);
+    at += boot_n;
+    out.clock.assign(reinterpret_cast<const char *>(at), clock_n);
+    at += clock_n;
+    out.photo.assign(reinterpret_cast<const char *>(at), photo_n);
+    return out.uptime_s > 0;
+}
 inline bool same_hello(const Frame &a, const Frame &b) {
     return std::equal(a.bytes.begin() + 24, a.bytes.begin() + 68, b.bytes.begin() + 24);
 }

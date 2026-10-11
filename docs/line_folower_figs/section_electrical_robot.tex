@@ -30,7 +30,7 @@ The timing wire is separate from UART: Teensy pin 20 is the pulse output and Pi 
 
 \begin{table}[H]
 \centering\small
-\caption{Current dual-motor GPIO allocation in firmware revision 9.}
+\caption{Current dual-motor GPIO allocation.}
 \label{tab:current-motor-pins}
 \begin{tabular}{@{}L{4cm}L{3cm}L{9cm}@{}}
 \toprule
@@ -54,6 +54,6 @@ Physical wheel polarity is a configuration value (currently \texttt{rr}), applie
 \label{fig:pi-teensy-tcrt5000-wiring}
 \end{figure}
 
-\texttt{ADC3} reads A, B and C sequentially with 10-bit resolution and returns \texttt{ADC3 A B C}, with each count in 0--1023. Firmware revision 9 performs neither reflectance normalization nor an acquisition timestamp. The installed calibration assumes black gives higher counts than white; validate this on the actual floor and tape. Sensor calibration is documented in Appendix~\ref{app:photo3-calibration}.
+\texttt{ADC3} reads A, B and C sequentially with 10-bit resolution and returns \texttt{ADC3 A B C}, with each count in 0--1023. The firmware performs neither reflectance normalization nor an acquisition timestamp. The installed calibration assumes black gives higher counts than white; validate this on the actual floor and tape. Sensor calibration is documented in Appendix~\ref{app:photo3-calibration}.
 
 No independent emitter switching or emitter-off subtraction is implemented. Lighting, working height and saturation can affect calibration. The \href{https://www.pjrc.com/store/teensy41.html}{Teensy specification} gives a 0--3.3\,V analog-input range without 5\,V tolerance; the earlier bench acquisition test did not establish the full AO voltage range of the powered modules. Historical readout and motor tests are in Appendix~\ref{app:bench-history}.

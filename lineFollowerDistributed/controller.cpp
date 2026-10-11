@@ -1,4 +1,5 @@
 #include "uart.hpp"
+#include <iterator>
 #include "pi_job.hpp"
 #include "queue_reset.hpp"
 #include "motor_padding.hpp"
@@ -37,7 +38,28 @@ class Controller {
         if(fs::weakly_canonical(c.root).filename()=="lineFollowerController")
             atomic_json(fs::weakly_canonical(c.root).parent_path()/"out/pi_teensy_clock.latest.json",record);
     }
+    void send_init() {
+        InitFiles files;
+        std::ifstream uptime("/proc/uptime");
+        require(bool(uptime >> files.uptime_s) && files.uptime_s > 0, "Cannot read Pi uptime");
+        files.photo = read_file(c.calibration);
+        auto optional = [](const fs::path &path) {
+            std::ifstream in(path, std::ios::binary);
+            if (!in)
+                return std::string();
+            return std::string(std::istreambuf_iterator<char>(in), {});
+        };
+        fs::path dir = fs::path(c.calibration).parent_path();
+        files.boot = optional(dir / "boot.json");
+        files.clock = optional(dir / "clock_calib.json");
+        auto bytes = pack_init(files);
+        require(udp.send(bytes.data(), bytes.size()), "Cannot send initialization");
+        std::cout << "INIT sent photo3 " << files.photo.size() << " bytes, boot " << files.boot.size()
+                  << " bytes, clock " << files.clock.size() << " bytes, uptime " << files.uptime_s
+                  << " s" << std::endl;
+    }
     void job_ready() {
+        send_init();
         Frame ready(JOB_READY,job_session,++txseq);gpio.put(ready);send(ready);
     }
     void prepare_job() {
@@ -179,7 +201,7 @@ class Controller {
                 continue;
             }
             if (f.kind == HELLO) {
-                if(!c.simulation && (end_to_end_replies<100 || uart->job!=NO_JOB)){reject();continue;}
+                if(!c.simulation && uart->job!=NO_JOB){reject();continue;}
                 if (session_exists && f.session == session) {
                     if ((policy.state == READY || policy.state == ACTIVE) &&
                         same_hello(f, handshake)) {
@@ -216,6 +238,7 @@ class Controller {
                 if(!c.simulation){
                     require(!session_exists,"One job per controller launch; recalibration required");
                     flush_job_queues(udp,log,job_session,"before_welcome");
+                    uart->refresh_clock();
                     char stream[32];std::snprintf(stream,sizeof stream,"STREAM %d",c.rate);
                     require(uart->exchange(stream)=="OK","Cannot start calibrated ADC stream");
                     last_stream_receive=ns();phase="ready_to_arm";

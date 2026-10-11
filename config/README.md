@@ -65,6 +65,19 @@ Configures routing and gateway policies between the Mac, ASUS router, and extern
 
 ---
 
+## Boot stamp
+
+`write_boot_stamp.sh` runs once per boot and writes `config/boot.json`. `hash8` is eight hex characters and changes only when the Pi reboots. `uptime_s` is seconds since that boot from `/proc/uptime`, so a later reading of `/proc/uptime` minus this value is the elapsed time while `hash8` still matches. `local_time` is the Pi's own clock at the moment the file was written. No network time is required.
+
+`photo3_calib.json` and `clock_calib.json` in this directory copy that `hash8` and add their own `local_time` and `uptime_s`. A clock file whose `hash8` differs from the current `boot.json` was taken before a reboot. `photo3_calib.json` stores the printed sensor summary (mean, standard deviation, count, validity, polarity) and does not store individual ADC readings. `clock_calib.json` stores the printed clock summary (round trip and half-width on each path, and the Pi–Teensy offset, drift and residual range) and does not store individual probes or edges.
+
+`boot-stamp.service` starts the script at boot. Install it on the Pi with:
+
+```bash
+sudo cp /home/pi/plant_lineFollower/config/boot-stamp.service /etc/systemd/system/
+sudo systemctl enable --now boot-stamp.service
+```
+
 ## Boot & System Tuning
 
 ### `boot_capture.sh`

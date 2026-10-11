@@ -1,11 +1,33 @@
 \clearpage
 \section{Clock Alignment and End-to-End Message Timing}
 \label{sec:gpio-clock}
-Message latency requires timestamps at clearly defined boundaries and a mapping between the clocks that produced them. This section describes the implemented two-stage alignment: a shared GPIO edge aligns Pi with Teensy, then four-timestamp UDP probes extend that map to Desktop. Offset is a difference between numerical clock readings, not a communication delay. Round trip and spare time use two Teensy timestamps and need no cross-device offset correction.
+Message latency requires timestamps at clearly defined boundaries and a mapping between the clocks that produced them. This appendix records that measurement. A shared GPIO edge aligns Pi with Teensy, and four-timestamp UDP probes align Desktop with Pi. Offset is a difference between numerical clock readings, not a communication delay. \texttt{runOperator} does not collect these delays. The command is \texttt{onDesktop/runClocksCalib}, and it requires path~B: Pi Ethernet \texttt{10.0.0.120}, Pi Wi-Fi \texttt{10.0.0.20}, and Desktop Ethernet \texttt{10.0.0.2}.
+
+\subsection{Path B Measurement on October 11, 2026}
+\label{sec:clock-delay-20261011}
+One run of \texttt{runClocksCalib --pairs 40} was taken with the robot idle and the motors stopped. Firmware revision 16 was already installed; the timing wire is Teensy pin 20 through 5\,k$\Omega$ to Pi GPIO23. All 80 Mac--Pi probes were valid, 40 on each path, and all 200 Pi--Teensy edges were valid.
+
+\begin{table}[H]
+\centering
+\caption{Mac--Pi corrected round trip and raw offset half-width, in milliseconds, October 11, 2026. Each half-width is half of that probe's corrected round trip. These are single-probe bounds, not the expanded intersection used for the September 28 session later in this appendix. The Desktop$-$Pi midpoint was about $4.968\times 10^{8}$\,ms on both paths; that value is the difference of clock origins, not a network delay.}
+\label{tab:clock-delay-20261011}
+\begin{tabular}{lrrrrr}
+\toprule
+Path & Probes & RTT min & RTT median & RTT max & Half-width median \\
+\midrule
+Ethernet & 40 & 0.706 & 0.970 & 2.799 & 0.485 \\
+Wi-Fi & 40 & 1.621 & 2.110 & 9.398 & 1.055 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Pi--Teensy half used 200 rising edges at up to 20\,Hz after three 0.5\,s LED flashes. The first-pulse Pi$-$Teensy offset was $-5.483318$\,s, again a clock-origin difference. Change from that first pulse had quartiles $+10$, $+19$ and $+27$\,$\mu$s. The fitted drift was 3.008\,ppm and the detrended residual range was 71.5\,$\mu$s. The Teensy write bracket never exceeded 1\,$\mu$s. Median delivery of the kernel edge into the Pi process was 152\,$\mu$s; that delivery delay is not part of the offset. The Mac records are \path{lineFollowerDistributedBin/out/clocks/20261011_063747/}. The Pi record is \path{lineFollowerDistributedBin/out/pi_teensy_clock.latest.json}, archived as \path{out/raspberry_pi/pi_teensy_clock_20261011_061014_1144.json}.
+
+The subsections below keep the method and the September 27--28 recordings. Those earlier numbers are not replaced by this shorter path-B run.
 
 \subsection{Pi--Teensy Alignment Using a Shared GPIO Edge}
 \subsubsection{Purpose and Wiring}
-Before subtracting a UART send timestamp on one processor from a receive timestamp on the other, their clocks must be aligned. The implemented standalone experiment measures the \emph{Pi--Teensy clock offset using a shared GPIO edge}. The standalone diagnostic measures clock offset, not UART transit time; the integrated controller uses this map for the message-timing measurements below. Unlike a ping-based estimate, it does not require equal communication delays in the two directions: both processors observe the same electrical event, and UART subsequently transports the timestamp record.
+Before subtracting a UART send timestamp on one processor from a receive timestamp on the other, their clocks must be aligned. The measurement uses a shared GPIO edge for the \emph{Pi--Teensy clock offset}. It measures clock offset, not UART transit time. The September 27 controller runs below used this map; a robot run started by \texttt{runOperator} no longer collects it. Unlike a ping-based estimate, it does not require equal communication delays in the two directions: both processors observe the same electrical event, and UART subsequently transports the timestamp record.
 
 Figure~\ref{fig:pi-teensy-tb6612-wiring} shows the installed timing connection: \textbf{Teensy pin 20 output $\rightarrow$ 5\,k$\Omega$ $\rightarrow$ Pi GPIO23 input (physical header pin 16)}, with common ground and 3.3\,V signaling. The green indicator uses Pi GPIO24 (header pin 18); the white indicator uses Teensy pin 21, each through a separate 5\,k$\Omega$ resistor to its grounded LED. UART remains Pi GPIO14/TX (header 8) to Teensy RX1/pin 0, and Teensy TX1/pin 1 to Pi GPIO15/RX (header 10), at 115200 baud, 8N1.
 
@@ -24,7 +46,7 @@ All reported offsets here use the current convention
 A positive value means Pi's numerical clock reading is ahead. The approximately 2188\,s offset reflects different clock origins; it is not a transmission delay. Console progress reports the smaller change $\theta_i-\theta_1$, which can have either sign. Archived JSON schema 1 used the opposite sign; the analysis below converts it to this convention. Schema 2 and the current CSV name the convention explicitly. Raw timestamps are unchanged.
 
 \subsubsection{Software and Reproduction}
-The standalone Pi executable is \path{/home/pi/robot0/measure_pi_teensy_clock}, built using C++17. Its source is \path{measure_pi_teensy_clock.cpp} in the same directory. Teensy runs Arduino C++ in \path{teensy41/firmware/halo_teensy_firmware/halo_teensy_firmware.ino}, firmware revision 16 (the shared-edge commands were introduced in revision 14), with the \texttt{GPIO\_EDGE\_CLOCK} diagnostic commands. C++ gives direct access to Linux GPIO/UART calls and Teensy GPIO registers, avoids an interpreter in the acquisition path, and matches the existing controller implementation. It does not make Linux scheduling deterministic: precision here primarily comes from the kernel event timestamp and the Teensy write bracket.
+The current Pi timing program is \path{lineFollowerDistributed/gpio_clock.cpp}, on the Pi at \path{/home/pi/plant_lineFollower/}. The archived captures below were taken with the earlier standalone program \path{measure_pi_teensy_clock}. Teensy runs Arduino C++ in \path{lineFollowerDistributed/firmware/halo_teensy_firmware/halo_teensy_firmware.ino}, firmware revision 16, with the \texttt{GPIO\_EDGE\_CLOCK} diagnostic commands. C++ gives direct access to Linux GPIO/UART calls and Teensy GPIO registers, avoids an interpreter in the acquisition path, and matches the existing controller implementation. It does not make Linux scheduling deterministic: precision here primarily comes from the kernel event timestamp and the Teensy write bracket.
 
 Run on Pi, with other UART clients stopped:
 \begin{verbatim}
@@ -212,10 +234,10 @@ The padded job ended after 4.045\,s when the 100\,ms freshness safeguard expired
 
 \subsubsection{Software and Reproducing These Figures}
 \begin{sloppypar}
-Runtime calibration and control remain C++17: The Pi package \path{robot0/lineFollowerController/} contains \path{controller.cpp}, \path{gpio_clock.cpp}, \path{pi_job.hpp} and \path{integrated_clock.hpp}. The Desktop package \path{2026_lineFollowerOperator/} contains \path{operator.cpp} and its clock-calibration headers. Teensy uses the shared Arduino C++ firmware described above. These implementations use direct GPIO/UART/socket interfaces and avoid Python interpreter and garbage-collection work in the timing path. C++ does not eliminate OS scheduling or Wi-Fi delays.
+The current measurement programs are C++17: \path{lineFollowerDistributed/clock_probe.cpp} on both machines and \path{gpio_clock.cpp} on the Pi, launched by \texttt{onDesktop/runClocksCalib}. \path{controller.cpp} and \path{operator.cpp} run the robot and do not collect this clock delay. Teensy uses the shared Arduino C++ firmware described above. These implementations use direct GPIO/UART/socket interfaces and avoid Python interpreter and garbage-collection work in the timing path. C++ does not eliminate OS scheduling or Wi-Fi delays.
 \end{sloppypar}
 
-Offline Python scripts in \path{2026_lineFollowerOperator/video_tools/} join sample/command identities and timestamps: \path{prepare_stats_video.py}, \path{clock_alignment.py} and \path{integrated_clock_analysis.py}. The resulting per-cycle \path{timing_cycles.csv} contains the directional estimates, their bounds, compute time, round trip and spare. Swift renders the telemetry video; it does not acquire control-loop timestamps.
+Offline Python scripts from the earlier Desktop package join sample/command identities and timestamps: \path{prepare_stats_video.py}, \path{clock_alignment.py} and \path{integrated_clock_analysis.py}. The resulting per-cycle \path{timing_cycles.csv} contains the directional estimates, their bounds, compute time, round trip and spare. Swift renders the telemetry video; it does not acquire control-loop timestamps.
 
 The plotting script \path{docs/tools/plot_desktop_clock.py} uses Python's standard library to read the archived JSON, writes raw derived samples and histogram bins, and generates PGFPlots sources. Its default input is the sibling \path{2026_lineFollowerOperator/} directory; an alternate package root can be passed as an argument. Source paths and SHA-256 hashes are saved in \path{docs/figures/desktop_clock/sources.json}. The four input recordings under the operator's \path{out/} are:
 \begin{itemize}
