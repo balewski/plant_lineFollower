@@ -1,7 +1,7 @@
 \begin{tikzpicture}[font=\small,box/.style={draw,rounded corners,align=center,minimum width=3cm,minimum height=1.3cm},link/.style={<->,thick,>=stealth}]
 \node[box,fill=blue!5] (desktop) at (0,0) {\textbf{Desktop}\\\texttt{en5: 10.0.0.2}\\\texttt{CLOCK\_MONOTONIC}};
 \node[box,fill=green!5] (asus) at (5,0) {\textbf{ASUS RT-N56U}\\LAN: \texttt{10.0.0.1}\\Wi-Fi: AirBears 3};
-\node[box,fill=orange!7,minimum width=3.5cm] (pi) at (10,0) {\textbf{Raspberry Pi}\\\texttt{eth0: 10.0.0.24}\\\texttt{wlan0: 10.0.0.149}};
+\node[box,fill=orange!7,minimum width=3.5cm] (pi) at (10,0) {\textbf{Raspberry Pi}\\\texttt{eth0: 10.0.0.120}\\\texttt{wlan0: 10.0.0.20}};
 \node[box,fill=gray!8] (home) at (0,2.8) {Home router\\Internet access};
 \draw[link,dashed,gray] (home) -- node[right,align=left] {Desktop Wi-Fi\\Internet only} (desktop);
 \draw[link,blue!70!black] (desktop) -- node[above] {Ethernet} (asus);

@@ -2,8 +2,8 @@
 # Report whether a Wi-Fi run can start. Exit 0 only when the plant is idle and ready.
 set -euo pipefail
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-    echo "statusPlant [--pi 10.0.0.149]"
-    echo "Wi-Fi only. Ready means .149 answers, neither program is running,"
+    echo "statusPlant [--pi 10.0.0.20]"
+    echo "Wi-Fi only. Ready means .20 answers, neither program is running,"
     echo "Pi UART /dev/serial0 exists, and photo3_calib.latest.json is complete and valid."
     exit 0
 fi

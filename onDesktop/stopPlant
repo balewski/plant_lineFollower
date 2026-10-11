@@ -2,7 +2,7 @@
 # Interrupt the Mac operator and the Pi controller. The controller then stops the Teensy.
 set -euo pipefail
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-    echo "stopPlant [--pi 10.0.0.149]"
+    echo "stopPlant [--pi 10.0.0.20]"
     echo "Send SIGINT to run_operator on this Mac and to controller on the Pi."
     exit 0
 fi
