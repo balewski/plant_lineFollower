@@ -1,7 +1,7 @@
 \clearpage
 \subsection{Standalone Desktop--Pi Clock-Offset Measurement}
 \label{sec:standalone-desktop-pi}
-The September 28 experiment isolates the Desktop--Pi part of the clock map. It compares a temporary wired Pi connection with the normal Pi Wi-Fi connection, without operating the motors or accessing Teensy. It measures clock offset and network round trip; it does not directly measure either one-way delay. All results in this subsection belong to this standalone session, not to the September 27 moving runs.
+\textbf{Stale results.} The September 28 experiment isolates the Desktop--Pi part of the clock map. It compares a temporary wired Pi connection with the normal Pi Wi-Fi connection, without operating the motors or accessing Teensy. It measures clock offset and network round trip; it does not directly measure either one-way delay. All results in this subsection belong to this standalone session, not to the September 27 moving runs, and not to the summary \texttt{runClocksCalib} now writes.
 
 \subsubsection{Connections and Acquisition}
 Figure~\ref{fig:desktop-pi-clock-network} shows the actual arrangement. Desktop remains wired to an ASUS LAN port, and an additional cable connects Pi to another ASUS LAN port. Pi Wi-Fi remains on AirBears 3. Desktop keeps its home-router Wi-Fi connection for Internet access. The Pi Ethernet address is \texttt{10.0.0.120}. Desktop \texttt{10.0.0.2} and Pi Wi-Fi \texttt{10.0.0.20} remain in use. This is Ethernet through ASUS, not a direct Desktop--Pi cable.
@@ -36,7 +36,7 @@ The idle capture lasted 120\,s with 2400 probes per path; a second 60\,s capture
 
 \begin{table}[H]
 \centering\small
-\caption{Standalone Desktop--Pi results, September 28. All times are ms. The final column is the narrowest expanded individual-probe offset interval half-width, at that probe's instant; it is not a guaranteed uncertainty throughout a later job.}
+\caption{Stale. Standalone Desktop--Pi results, September 28. All times are ms. The final column is the narrowest expanded individual-probe offset interval half-width, at that probe's instant; it is not a guaranteed uncertainty throughout a later job.}
 \label{tab:standalone-desktop-pi}
 \input{figures/pi_desktop_clock/results_table.tex}
 \end{table}
@@ -44,7 +44,7 @@ The idle capture lasted 120\,s with 2400 probes per path; a second 60\,s capture
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{figures/pi_desktop_clock/20260928_073819_idle_plots.pdf}
-\caption{Idle experiment: offset evolution and corrected round-trip distribution. The left panel subtracts one constant offset and plots one-second interval midpoints with conditional error bars using the 50\,ppm window assumption. The right panel includes all observed round trips in 0.1\,ms bins with logarithmic counts. Offset spread is not absolute accuracy.}
+\caption{Stale. Idle experiment, September 28, 2026: offset evolution and corrected round-trip distribution. The left panel subtracts one constant offset and plots one-second interval midpoints with conditional error bars using the 50\,ppm window assumption. The right panel includes all observed round trips in 0.1\,ms bins with logarithmic counts. Offset spread is not absolute accuracy.}
 \label{fig:standalone-clock-results}
 \end{figure}
 

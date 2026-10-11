@@ -1,17 +1,12 @@
 \clearpage
 \section{Remote Robot Control: Desktop Implementation}
 \label{sec:remote-control}
-\textbf{Status: C++17 implementation; live tests use motor-disabled mode.} The self-contained Pi and Desktop programs are installed. Teensy firmware revision 16 owns the acquisition timer; no automatic startup service is installed. The first goal is to demonstrate the mechanics of transporting three ADC readings to Desktop and returning motor commands through the existing ASUS network. Reuse the current line-following decision rules, initially targeting 100 sensor triplets/s; higher rates, larger payloads and neural control are later experiments.
+\textbf{Status: C++17 implementation, started by \texttt{onDesktop/runOperator}.} Teensy firmware revision 16 owns the acquisition timer; no automatic startup service is installed. The operator receives three ADC readings and returns motor commands through the ASUS Wi-Fi path. It reuses the local line-following decision rules at 100 sensor triplets/s. The timing numbers later in this section were recorded with motor output disabled.
 
-\subsection{Two Self-Contained Packages and Responsibilities}
-The installed implementation locations are:
-\begin{itemize}
-\item Pi: \path{/home/pi/plant_lineFollower/lineFollowerDistributed/}.
-\item Desktop: the same \path{lineFollowerDistributed/} tree in this repository.
-\end{itemize}
-Build each package with \texttt{make}. Pi starts with \texttt{./controller}; Desktop starts with \texttt{./run\_operator}. Their entry-point sources are \texttt{controller.cpp} and \texttt{operator.cpp}. Both default to motor-disabled operation. Actual motor output requires an explicit \texttt{--enable-motors} flag on both processes; no such run has been performed on the real robot.
+\subsection{Programs and Responsibilities}
+The source is one tree, \path{lineFollowerDistributed/}, compiled on the Pi and on the Desktop. The Pi entry point is \texttt{controller}; the Desktop entry point is \texttt{run\_operator}, started by \texttt{onDesktop/runOperator}. The two binaries default to motor-disabled operation. \texttt{runOperator} passes \texttt{--enable-motors} to both unless \texttt{--disable-motors} is given, in which case the Pi writes \texttt{STOPALL} and the wheels stay stopped. The same duration is given to both programs and starts after the job handshake. The default speed is 0.5.
 
-Each directory contains its own README, launch entry point, dependency declaration, configuration, protocol definition and tests; it builds and runs without code from its sibling or from loose files in the old \texttt{robot0} root. Desktop also contains a versioned copy of the accepted sensor calibration and the pure line-following logic. Pi contains serial I/O, motor polarity and limits, session handling and timeout enforcement. Package-local \texttt{out/} directories hold run logs; this keeps the two deliverables portable and self-contained. Protocol versions and common test vectors must match across the two copies. A C++17 compiler and Make build the programs natively on Pi and macOS. The active packages have no Python, pip or pyserial dependency. JSON and SHA-256 headers are vendored with their licenses; Teensy requires the matching revision-16 streaming firmware.
+The Pi controller owns the UART, motor polarity (default \texttt{rr}), limits, session handling and the stop policy. The Desktop operator owns calibration use and the line-following decision. It does not keep a calibration file of its own. At job start the controller reads three JSON files on the Pi and sends their bytes in one UDP datagram. A C++17 compiler and Make build the programs natively on Pi and macOS. The control programs have no Python dependency. JSON and SHA-256 headers are vendored with their licenses; Teensy requires firmware revision 16.
 
 \begin{table}[H]
 \centering\small
@@ -24,17 +19,35 @@ Responsibility & Pi: Controller & Desktop: Operator \\
 Sensor acquisition & Own UART exclusively; receive timer-driven Teensy samples; validate counts and forward timestamps. & Receive readings; use the newest valid sample for the next decision. \\
 Line following & No tape detection or steering calculation. & Calibration, \texttt{SigmaDeadband}, \texttt{tape\_seen}, \texttt{normalize}, \texttt{gradient\_noise}, \texttt{motor\_targets}. \\
 Motor execution & Validate targets; apply wiring polarity once; send MOTORS/STOPALL; track acknowledgement. & Return signed physical left/right PWM values together, including unchanged targets while active. \\
-Lifetime and status & Enforce session, sequence, sample-age limit, local run limit and stop policy. & Start/arm/stop the session; identify calibration; report computation timing and decisions. \\
+Lifetime and status & Enforce session, sequence, sample-age limit, local run limit and stop policy. & Accept the initialization datagram, then start, arm and stop the session. Identify the sensor file by the hash of the received bytes. Report transmit latency and its uncertainty. \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The Pi remote process owns UART exclusively; no other serial client may run concurrently. Calibration values are copied as an explicit snapshot; there is no requirement for a shared filesystem or network file access during control. Desktop sends physical signed targets in $[-255,255]$, not raw direction-pin settings. These represent direction and PWM magnitude, not measured wheel speed.
+The Pi remote process owns UART exclusively; no other serial client may run concurrently. The three JSON files stay on the Pi. The operator receives their bytes over UDP and does not read them from a shared disk. Desktop sends physical signed targets in $[-255,255]$, not raw direction-pin settings. These represent direction and PWM magnitude, not measured wheel speed.
+
+\texttt{runOperator} refuses any Pi address other than Wi-Fi \texttt{10.0.0.20}. It prints the effective arguments, checks the plant, and starts the controller over SSH. The controller binds the addresses of that SSH connection and waits. The operator then uses Pi port 5000 and Desktop port 5001; the Desktop address is the one reported by the controller, \texttt{10.0.0.2} when the Desktop Ethernet is on the ASUS. SSH starts and stops the controller. It does not copy \path{boot.json}, \path{clock_calib.json} or \path{photo3_calib.json}.
+
+\subsection{Initialization Datagram}
+\label{sec:init-datagram}
+When the controller accepts a job request it reads \texttt{/proc/uptime} and three files in \path{/home/pi/plant_lineFollower/config/}. \path{photo3_calib.json} is required. \path{boot.json} and \path{clock_calib.json} are included when present and are empty sections when absent. One UDP datagram carries all three. It is not one of the 128-byte control frames. Its 27-byte header is the six characters \texttt{LFINIT}, version 1, Pi uptime in milliseconds as a big-endian 64-bit integer, and the three file lengths as big-endian 32-bit integers. The raw file bytes follow, in the order boot, clock, then photo. Each file is at most 20\,000 bytes. The controller sends the same datagram again with every job-ready retry. The operator accepts that datagram and the job-ready frame in either order, writes the three files into the run log, and only then builds the decision and the clock report.
+
+From \path{photo3_calib.json} the operator reads only the white and black mean and standard deviation of sensors A, B and C. It treats those means as usable and does not consult the file's validity flag. It does not take motor polarity from the file; polarity remains the controller setting, default \texttt{rr}. The SHA-256 of the received photo bytes is the calibration identity in the following HELLO, so both sides agree on the same bytes before arming.
+
+\path{boot.json} carries \texttt{hash8}, the Pi local time and \texttt{uptime\_s} written at boot. \path{clock_calib.json} is the summary from Appendix~\ref{sec:gpio-clock}. The operator uses that summary only when its \texttt{hash8} equals the boot file, the Pi--Teensy half completed, and at least one Wi-Fi probe was valid. Elapsed time $\Delta t$, in seconds, is the uptime in the datagram minus \texttt{uptime\_s} in the clock file. With $w$ the median Wi-Fi half-width in milliseconds, $r$ the detrended residual range in microseconds and $b$ the fitted drift in ppm,
+\begin{equation}
+u = w + \frac{r}{1000} + |b|\,\Delta t \times 10^{-3}
+\qquad[\mathrm{ms}].
+\label{eq:transmit-uncertainty}
+\end{equation}
+The Ethernet half-width is not used on a robot run. The Wi-Fi midpoint and the nominal Pi$-$Teensy offset convert the Teensy sample-complete time into Desktop time. Transmit latency is Desktop receipt of the SENSOR datagram minus that instant. The midpoint is a clock origin, not a delay. If the hashes differ, either file is missing, or the summary is incomplete, each sample instead contributes the raw delivery upper bound already in the SENSOR frame: Pi completion time minus the conservative earliest bound. The median of those bounds is then reported as the uncertainty. A Teensy-only reset does not change \texttt{hash8}.
+
+A 10\,s motor-enabled run on October 11 used the summary in Section~\ref{sec:clock-delay-current}. The initialization datagram carried \texttt{hash8} \texttt{f03276bd} for both files, so the clocks matched. Pi uptime in that datagram was 2592.47\,s, 390.5\,s after the clock file. Equation~\eqref{eq:transmit-uncertainty} was then $1.036+0.038+1.070=2.143$\,ms: most of the uncertainty is drift since the calibration, not the Wi-Fi half-width. The operator received 998 sensor packets with no sequence gaps and sent 989 commands. Transmit latency had median 3.947\,ms, 99th percentile 12.096\,ms and maximum 20.195\,ms, each with that 2.143\,ms uncertainty. Desktop computation had median 0.001\,ms. On the Pi, 999 triplets were acquired and all 998 successive start intervals were 10\,ms. It accepted 989 commands, acknowledged 974, replaced 15 that were still waiting, and made 974 nonzero motor writes. Teensy standby was confirmed on the Pi. The Desktop log is \path{lineFollowerDistributedBin/out/20261011_115032_cpp_operator_43586/}; the Pi log is \path{lineFollowerDistributedBin/out/20261011_111348_cpp_controller_1879/}. The Pi wall clock lags the Desktop, which is why those directory times differ.
 
 \begin{figure}[H]
 \centering
 \input{remote_control_topology.tikz}
-\caption{Implemented remote split on the configured network. Teensy owns acquisition timing and motor PWM; Pi relays samples and validates commands; every line-following decision moves to Desktop. ASUS only transports packets. Live timing is measured with all proposed motor targets replaced by STOPALL at the Pi UART boundary.}
+\caption{Implemented remote split on the configured network. Teensy owns acquisition timing and motor PWM; Pi relays samples and validates commands; every line-following decision is made on the Desktop. ASUS only transports packets, including the initialization datagram. A run with \texttt{--disable-motors} replaces proposed targets with STOPALL at the Pi UART boundary; otherwise the Pi applies the signed targets.}
 \label{fig:remote-topology}
 \end{figure}
 
@@ -58,7 +71,7 @@ Desktop is event driven. It receives a valid sensor packet, performs the existin
 \end{figure}
 
 \subsection{Transport and Version 2 Message Contract}
-Use direct binary UDP over the configured ASUS LAN; SSH launches programs and retrieves logs. Default configurable ports are Pi \texttt{10.0.0.20:5000} and Desktop \texttt{10.0.0.2:5001}. Bind the sockets to the ASUS-facing addresses. The first demonstration runs natively on macOS, without a container/VM. Only one active operator session controls the robot.
+Control traffic is direct binary UDP on the ASUS LAN. \texttt{runOperator} uses Pi \texttt{10.0.0.20:5000} and the Desktop address reported by the controller, port 5001. The operator runs natively on macOS, without a container or VM. Only one active operator session controls the robot. The initialization datagram in Section~\ref{sec:init-datagram} uses this same socket and is not an SSH or \texttt{scp} transfer.
 
 \begin{table}[H]
 \centering\small
@@ -72,12 +85,13 @@ Common header & Magic, protocol version, message type, payload length, session I
 SENSOR: Pi to Desktop & Sample ID; Teensy start/end timestamps (microseconds); A/B/C uint16 counts; missing-sample count; conservative Pi completion bound and Pi receipt time (nanoseconds); original Teensy sequence. \\
 COMMAND: Desktop to Pi & Command ID; source sample ID; signed left/right int16 PWM targets ($-255\ldots255$). Session and sample identity link the decision to its original observation. \\
 STATUS: Pi to Desktop & Last command acknowledged by Teensy; source sample ID; Pi send/ack timestamps; armed/stopped/fault state and rejection/loss counters. Acknowledgement is not proof of motor rotation. \\
-Session control & HELLO/configuration agreement, ARM, STOP and acknowledgements. Agree rate, freshness limit, maximum PWM, run duration, channel order and calibration identity before arming. \\
+Initialization & One datagram, magic \texttt{LFINIT}: Pi uptime and the raw bytes of \path{boot.json}, \path{clock_calib.json} and \path{photo3_calib.json}. Sent with each job-ready reply, before HELLO. \\
+Session control & HELLO/configuration agreement, ARM, STOP and acknowledgements. Agree rate, freshness limit, maximum PWM, run duration, motor enable, polarity and the SHA-256 of the received sensor file before arming. \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-At 100\,Hz the three raw uint16 values are 600\,bytes/s before headers. Version 2 uses a 24-byte application header, an 82-byte SENSOR frame and a 36-byte COMMAND frame: 11.8\,kB/s combined at 100 messages/s in each direction. These frame lengths are UDP payload sizes, excluding UDP/IP headers. STATUS is 75 bytes, sent after each UART command acknowledgement and periodically. Session traffic and UDP/IP/Wi-Fi overhead are additional. No application frame exceeds 128 bytes. Section~\ref{sec:message-sizes} separates binary LAN payloads from ASCII UART record lengths and compares the measured 25, 50 and 100\,Hz runs. Larger payloads must use an explicit size/rate budget, avoid IP fragmentation, and include pacing and overload handling; they cannot simply expand without limit.
+At 100\,Hz the three raw uint16 values are 600\,bytes/s before headers. Version 2 uses a 24-byte application header, an 82-byte SENSOR frame and a 36-byte COMMAND frame: 11.8\,kB/s combined at 100 messages/s in each direction. These frame lengths are UDP payload sizes, excluding UDP/IP headers. STATUS is 75 bytes, sent after each UART command acknowledgement and periodically. Session traffic and UDP/IP/Wi-Fi overhead are additional. SENSOR, COMMAND, STATUS and the session-control frames do not exceed 128 bytes. The initialization datagram is separate and larger: the three current summaries are a few kilobytes, and each included file is limited to 20\,000 bytes. Section~\ref{sec:message-sizes} separates binary LAN payloads from ASCII UART record lengths and compares the stale 25, 50 and 100\,Hz runs. Larger steady-state payloads must use an explicit size/rate budget, avoid IP fragmentation, and include pacing and overload handling; they cannot simply expand without limit.
 
 UDP preserves message boundaries but does not guarantee delivery or order. Drop duplicate, reordered and expired control data; do not retransmit obsolete samples or drive commands. Lost data is exposed by sequence gaps. Session-control exchanges use bounded retries and idempotent acknowledgements; repeated STOP is harmless. A fresh session ID prevents packets from a previous run from taking control. Pin the active peer address/port; the session ID distinguishes runs and is not cryptographic authentication. This protocol is intended for the isolated robot LAN, not direct Internet exposure. These choices follow the \href{https://www.rfc-editor.org/rfc/rfc8085.html}{UDP usage guidelines}.
 
@@ -91,7 +105,7 @@ Start stopped. Require explicit arming with a fresh session and valid recent sen
 The existing Teensy firmware watchdog stops drive after approximately 750\,ms without a valid drive refresh. It is backup for a hung Pi process, not the configured network freshness policy. Pi must never continually refresh a command after its source sample expires. Revision 10 preserves this independent motor watchdog; sampling and clock queries do not refresh it. Tests verify serial replies and stopped status; the firmware watchdog under real motion and physical stopping distance remain untested.
 
 \subsection{Timing Measurements and Demonstration Sequence}
-Current recorded videos use the per-job GPIO-plus-network alignment and sample-to-target-receipt timing defined in Section~\ref{sec:desktop-clock}. The sample-to-ACK upper bound below is an earlier diagnostic with different endpoints; it must not be compared directly with the current round-trip column.
+The recorded videos use the stale per-job GPIO-plus-network alignment and sample-to-target-receipt timing defined in Section~\ref{sec:desktop-clock}. A current \texttt{runOperator} session does not repeat that calibration; it reports the transmit latency of Section~\ref{sec:init-datagram}. The sample-to-ACK upper bound below is an earlier diagnostic with different endpoints; it must not be compared directly with that transmit latency.
 
 Measure actual acquisition intervals, missed ticks, command age, UDP sequence gaps, queue drops, Pi CPU load and Desktop compute duration. Report median, 99th/99.9th percentile, maximum observed delay and the longest interruption, with run duration and sample count. Keep per-packet logging out of the critical path; use bounded buffering and summarized console output.
 
@@ -118,14 +132,14 @@ A 15.01\,s Desktop session on the home-network comparison path received 1,500 tr
 
 In a separate five-second test, deliberately suspending Pi produced a 203.40\,ms loop gap. Teensy still reported 10,000\,$\mu$s intervals for all 499 received triplets, with no sequence gaps; the delivery-age bound reached 198.18\,ms. This demonstrates that Pi scheduling no longer sets acquisition timing. A live motor-disabled protocol probe also verified invalid/duplicate packet rejection, command-loss expiry, late-ARM rejection and confirmed STOP. No physical motor drive was enabled.
 
-The ASUS link recovered after the adapter reset: the original script attempted activation just before NetworkManager declared the device ready, then automatic reconnection succeeded four seconds later. The recovery script now waits up to 30\,s for readiness and recognizes automatic reconnection. Current access is Wi-Fi \texttt{10.0.0.20} on host \texttt{pi2}, with Desktop \texttt{10.0.0.2} reached through \texttt{wlan0}.
+The ASUS link recovered after the adapter reset: the original script attempted activation just before NetworkManager declared the device ready, then automatic reconnection succeeded four seconds later. The recovery script now waits up to 30\,s for readiness and recognizes automatic reconnection. That test used Wi-Fi \texttt{10.0.0.20} on host \texttt{pi2}. A robot run still uses that Pi address; the Desktop address is the one the controller reports for the SSH session.
 
 The subsequent ASUS test collected 7,499 triplets over 75.059\,s on Pi with zero sequence gaps and all reported start intervals at 10,000\,$\mu$s. Desktop received 5,016 triplets and sent 4,957 decisions, but the 100\,ms freshness policy stopped its session after 50.188\,s of the intended 60\,s. The longest command-arrival gap was 102.806\,ms while Pi's largest loop gap was only 5.689\,ms and Teensy sampling continued. This identifies a command-delivery delay; it does not distinguish Desktop scheduling from Wi-Fi delay. The acknowledged sample-to-ACK upper bound had median 9.215\,ms, 99th percentile 16.563\,ms and maximum 40.085\,ms. Motors stayed disabled, STOP was acknowledged, and final standby was confirmed. Default freshness remains 100\,ms; uninterrupted wireless operation at that limit is not yet established. Details are in \texttt{VALIDATION\_TEENSY\_CLOCK.md}.
 
 \subsubsection{Earlier C++ Pi-Clock Baseline}
 The measurements below predate Teensy-clock firmware and are preserved for comparison.
 
-Each package includes a README, configuration, protocol documentation, dependency declaration and tests. Pi additionally includes the serial engine and independently tested command-lifetime policy. Desktop carries the pure steering functions and a calibration snapshot derived from the authoritative Pi source; source/calibration hashes are recorded in \texttt{provenance.json}. Updating calibration is an explicit paired operation, not a mid-run file dependency.
+Each package includes a README, configuration, protocol documentation, dependency declaration and tests. Pi additionally includes the serial engine and independently tested command-lifetime policy. In this earlier package, Desktop carried the pure steering functions and a calibration snapshot copied from the Pi; source and calibration hashes were recorded in \texttt{provenance.json}, and updating calibration was an explicit paired copy. The current operator does not keep that snapshot. It receives the Pi files in the initialization datagram.
 
 The native C++ tests passed on Pi and Desktop: 3,012 reference steering decisions matched, with 3,086 checks in the original unit executable (3,100 after the Teensy-clock changes). Virtual-UART integration tests verify motor-disabled output, polarity mapping with simulated motors, command-loss stopping, late ARM rejection, a missing sensor stream, partial/interleaved sample and acknowledgement lines, and expiry before UART transmission. Clock tests check stale-buffer handling, reset rejection and 64-bit timestamps across a 32-bit microsecond rollover. The same controller tests passed on macOS with AddressSanitizer and UndefinedBehaviorSanitizer. Those simulated tests never open the robot UART.
 

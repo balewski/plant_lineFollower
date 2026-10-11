@@ -1,11 +1,11 @@
 \subsection{Available Cycle Time and Smaller-Message Options}
 \label{sec:timing-budget}
 \subsubsection{What ``Free'' Time Is Supported by the Measurements?}
-For the existing robot, the defensible quantity is \emph{spare time at target receipt}: $S=1000/f-(T_r-T_s)$ in ms. Both timestamps are on Teensy, so Desktop clock-offset uncertainty does not enter this subtraction. Better alignment improves the separation into forward and reverse delay; it neither creates more spare time nor changes the already measured round trip. The measurements stop at complete target receipt, before motor-output application. They therefore do not establish CPU idle time or an exact interval from motor application to the next ADC tick.
+For the existing robot, the defensible quantity is \emph{spare time at target receipt}: $S=1000/f-(T_r-T_s)$ in ms. Both timestamps are on Teensy, so Desktop clock-offset uncertainty does not enter this subtraction. Better alignment improves the separation into forward and reverse delay; it neither creates more spare time nor changes the already measured round trip. The measurements stop at complete target receipt, before motor-output application. They therefore do not establish CPU idle time or an exact interval from motor application to the next ADC tick. The spare-time numbers in this subsection are the stale September moving runs.
 
 \begin{table}[H]
 \centering\small
-\caption{Observed spare time in the original unpadded moving runs. Quartiles are in ms. Late means the target arrived after the next nominal sample deadline; the denominator includes only complete matched cycles.}
+\caption{Stale. Observed spare time in the original unpadded moving runs. Quartiles are in ms. Late means the target arrived after the next nominal sample deadline; the denominator includes only complete matched cycles.}
 \label{tab:spare-budget}
 \input{figures/pi_desktop_clock/spare_table.tex}
 \end{table}
