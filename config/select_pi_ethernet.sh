@@ -1,8 +1,8 @@
 #!/bin/bash
 # Choose SSH path A, B, or C from the Ethernet cable on eth0.
-#   A  no cable     Wi-Fi only          10.0.0.149
-#   B  cable→ASUS   Ethernet            10.0.0.24
-#   C  cable→home   Ethernet            192.168.68.125
+#   A  no cable     Wi-Fi only          10.0.0.20
+#   B  cable→ASUS   Ethernet            10.0.0.120
+#   C  cable→home   Ethernet            192.168.68.220
 # The ASUS ignores ARP from a foreign source address, so each probe is sent
 # from the fixed address of that network.
 # Each run appends to out/ethernet-select.log.
@@ -116,9 +116,9 @@ reach() {
 
 report_paths() {
     announce_configured
-    reach 10.0.0.149 10.0.0.2 "A"
-    reach 10.0.0.24 10.0.0.2 "B"
-    reach 192.168.68.125 192.168.68.107 "C"
+    reach 10.0.0.20 10.0.0.2 "A"
+    reach 10.0.0.120 10.0.0.2 "B"
+    reach 192.168.68.220 192.168.68.107 "C"
     snapshot
     note "log: $LOG"
 }
@@ -127,10 +127,10 @@ ensure_path_a() {
     local wifi
     wifi="$(nmcli -g GENERAL.CONNECTION device show wlan0 2>/dev/null || true)"
     if [[ $wifi == "asus-robot" ]]; then
-        note "Path A: no Ethernet cable. Wi-Fi already 10.0.0.149."
+        note "Path A: no Ethernet cable. Wi-Fi already 10.0.0.20."
         return 0
     fi
-    note "Path A: no Ethernet cable. Wi-Fi only, 10.0.0.149."
+    note "Path A: no Ethernet cable. Wi-Fi only, 10.0.0.20."
     if nmcli connection up asus-robot; then
         note "Path A: asus-robot is up."
     else
@@ -170,8 +170,8 @@ probe() {
 
 asus=0
 home=0
-probe 10.0.0.24 10.0.0.1 && asus=1
-probe 192.168.68.125 192.168.68.1 && home=1
+probe 10.0.0.120 10.0.0.1 && asus=1
+probe 192.168.68.220 192.168.68.1 && home=1
 current="$(nmcli -g GENERAL.CONNECTION device show "$IFACE" 2>/dev/null || true)"
 
 if [[ $asus -eq 1 && $home -eq 1 ]]; then
@@ -181,10 +181,10 @@ if [[ $asus -eq 1 && $home -eq 1 ]]; then
 fi
 
 if [[ $asus -eq 1 ]]; then
-    if [[ $current == "asus-ethernet" ]] && ip -4 -o addr show dev "$IFACE" | grep -q "inet 10.0.0.24/"; then
-        note "Path B: Ethernet cable to ASUS. Already 10.0.0.24."
+    if [[ $current == "asus-ethernet" ]] && ip -4 -o addr show dev "$IFACE" | grep -q "inet 10.0.0.120/"; then
+        note "Path B: Ethernet cable to ASUS. Already 10.0.0.120."
     else
-        note "Path B: Ethernet cable to ASUS. Switching eth0 to 10.0.0.24."
+        note "Path B: Ethernet cable to ASUS. Switching eth0 to 10.0.0.120."
         if nmcli connection up asus-ethernet; then
             note "Path B: asus-ethernet is up."
         else
@@ -196,10 +196,10 @@ if [[ $asus -eq 1 ]]; then
 fi
 
 if [[ $home -eq 1 ]]; then
-    if [[ $current == "Wired connection 1" ]] && ip -4 -o addr show dev "$IFACE" | grep -q "inet 192.168.68.125/"; then
-        note "Path C: Ethernet cable to the home router. Already 192.168.68.125."
+    if [[ $current == "Wired connection 1" ]] && ip -4 -o addr show dev "$IFACE" | grep -q "inet 192.168.68.220/"; then
+        note "Path C: Ethernet cable to the home router. Already 192.168.68.220."
     else
-        note "Path C: Ethernet cable to the home router. Switching eth0 to 192.168.68.125."
+        note "Path C: Ethernet cable to the home router. Switching eth0 to 192.168.68.220."
         if nmcli connection up "Wired connection 1"; then
             note "Path C: Wired connection 1 is up."
         else

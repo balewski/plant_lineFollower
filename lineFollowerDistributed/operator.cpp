@@ -248,9 +248,16 @@ class Operator {
             // Calibration is before HELLO/ARM and does not consume drive duration.
             start=ns(); end=start+U64(c.duration*1e9); retry=start+100000000;
             previous=last_recv=start;
+            U64 next_left=start;
             send(handshake);
             while (running && ns() < end) {
                 U64 now = ns();
+                if (now >= next_left) {
+                    U64 left_ns = end > now ? end - now : 0;
+                    std::cout << "TIME LEFT " << (left_ns + 500000000ULL) / 1000000000ULL
+                              << " s" << std::endl;
+                    next_left = now + 10000000000ULL;
+                }
                 log.metric(LOOP, (now - previous) / 1e6);
                 previous = now;
                 if (now - last_recv > 2000000000ULL)

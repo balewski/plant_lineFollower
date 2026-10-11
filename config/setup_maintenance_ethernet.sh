@@ -11,7 +11,7 @@ if [[ "${1:-}" == "--help" ]]; then
 fi
 [[ $# == 0 ]] || { echo "Unexpected arguments" >&2; exit 2; }
 [[ $EUID == 0 ]] || { echo "Run with sudo in an interactive terminal." >&2; exit 1; }
-[[ $(hostname) == raspberrypi ]] || { echo "Unexpected host" >&2; exit 1; }
+[[ $(hostname) == pi2 ]] || { echo "Unexpected host" >&2; exit 1; }
 wired_uuid=0a9fb68a-407a-3937-8a5e-d96b1174ce41
 fallback=robot-direct-ethernet
 [[ $(nmcli -g ipv4.method connection show uuid "$wired_uuid") == auto ]] || {
@@ -46,5 +46,5 @@ nmcli -f connection,ipv4 connection show uuid "$wired_uuid" > "$backup/wired_aft
 printf 'Prepared Ethernet maintenance fallback. Backup: %s\n' "$backup"
 echo "Current connection is unchanged. Test after moving the cable to the Mac."
 echo "Mac: 192.168.77.1/24, no router or DNS. Pi: 192.168.77.2/24."
-echo "Allow about 15-30 seconds for DHCP to fail, then SSH to pi@192.168.77.2."
+echo "Allow about 15-30 seconds for DHCP to fail, then SSH to pi@192.168.77.2. The host name is pi2."
 echo "For rollback, restore the backed-up connection files and reload NetworkManager."

@@ -7,7 +7,7 @@ Figure~\ref{fig:laptop-robot-lan} shows the three ways Desktop reaches Pi. All a
 \begin{figure}[H]
 \centering
 \input{laptop_robot_lan.tikz}
-\caption{SSH paths. A, Wi-Fi only: Pi \texttt{10.0.0.149} to ASUS. B and C require the Pi Ethernet cable. B: that cable to ASUS, Pi \texttt{10.0.0.24}. C: that cable to the home router, Pi \texttt{192.168.68.125}. Desktop is \texttt{10.0.0.2} on A and B, and \texttt{192.168.68.107} on C.}
+\caption{SSH paths. The host name is pi2. A, Wi-Fi only: \texttt{ssh pi2} at \texttt{10.0.0.20}. B and C require the Ethernet cable. B: that cable to ASUS, \texttt{ssh pi2-asus-eth} at \texttt{10.0.0.120}. C: that cable to the home router, \texttt{ssh pi2-home-eth} at \texttt{192.168.68.220}. Desktop is \texttt{10.0.0.2} on A and B, and \texttt{192.168.68.107} on C. The login account is \texttt{pi}.}
 \label{fig:laptop-robot-lan}
 \end{figure}
 
@@ -17,11 +17,11 @@ Figure~\ref{fig:laptop-robot-lan} shows the three ways Desktop reaches Pi. All a
 \label{tab:current-network}
 \begin{tabular}{@{}lll@{}}
 \toprule
-Path & Pi address & Connection \\
+Path & pi2 address & Connection \\
 \midrule
-A & \texttt{10.0.0.149} & Wi-Fi only. Pi Wi-Fi to ASUS AirBears 3. Desktop Ethernet \texttt{10.0.0.2}. \\
-B & \texttt{10.0.0.24} & Pi Ethernet cable to an ASUS LAN port. Desktop Ethernet \texttt{10.0.0.2}. \\
-C & \texttt{192.168.68.125} & Pi Ethernet cable to the home router. Desktop Wi-Fi \texttt{192.168.68.107}. \\
+A & \texttt{10.0.0.20} & Wi-Fi only. Pi Wi-Fi to ASUS AirBears 3. Desktop Ethernet \texttt{10.0.0.2}. \\
+B & \texttt{10.0.0.120} & Pi Ethernet cable to an ASUS LAN port. Desktop Ethernet \texttt{10.0.0.2}. \\
+C & \texttt{192.168.68.220} & Pi Ethernet cable to the home router. Desktop Wi-Fi \texttt{192.168.68.107}. \\
 \bottomrule
 \end{tabular}
 \end{table}

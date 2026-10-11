@@ -6,7 +6,7 @@ MARKER=/etc/cloud/cloud-init.disabled
 STATE=/home/pi/plant_lineFollower/out/boot_optimization
 OWNED="$STATE/cloud-init-disabled-by-this-script"
 fail() { echo "Stopped: $*" >&2; exit 1; }
-[[ "$(hostname)" == raspberrypi ]] || fail "This script is for raspberrypi only."
+[[ "$(hostname)" == pi2 ]] || fail "This script is for pi2 only."
 case "${1:---status}" in
   --status)
     if [[ -e "$MARKER" ]]; then echo "cloud-init is disabled for subsequent boots."; else echo "cloud-init is enabled."; fi

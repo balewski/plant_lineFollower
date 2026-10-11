@@ -20,11 +20,12 @@
 ---
 
 ## 3. Remote Raspberry Pi Environment
-- **Host**: Reachable via SSH alias `pi` (configured in `~/.ssh/config` pointing to `raspberrypi.local` / `192.168.68.126`, SSH key `~/.ssh/pi_robot_ed25519`).
+- **Host**: SSH as `pi2` with key `~/.ssh/pi_robot_ed25519`. Hosts in `~/.ssh/config`: `pi2` `10.0.0.20`, `pi2-asus-eth` `10.0.0.120`, `pi2-home-eth` `192.168.68.220`.
 - **Fixed IPs**:
-  - Wi-Fi (`wlan0`): `192.168.68.126`
-  - Ethernet (`eth0`): `192.168.68.125`
-  - Gateway / DNS: `192.168.68.1`
+  - A, Wi-Fi (`wlan0`, `asus-robot`): `10.0.0.20`. Robot runs use this path only.
+  - B, Ethernet to ASUS (`eth0`, `asus-ethernet`): `10.0.0.120`
+  - C, Ethernet to the home router (`eth0`, `Wired connection 1`): `192.168.68.220`, gateway / DNS `192.168.68.1`
+  - Desktop: `10.0.0.2` on the ASUS, `192.168.68.107` on home Wi-Fi
 - **UART / Hardware**:
   - Serial port on Pi: `/dev/serial0` (115200 baud, 8N1) connected to Teensy 4.1 companion firmware.
 
