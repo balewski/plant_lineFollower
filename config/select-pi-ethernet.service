@@ -1,0 +1,11 @@
+[Unit]
+Description=Choose the fixed Pi Ethernet address from the connected cable
+After=NetworkManager.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/pi/plant_lineFollower/config/select_pi_ethernet.sh
+
+[Install]
+WantedBy=multi-user.target
