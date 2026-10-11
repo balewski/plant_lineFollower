@@ -46,7 +46,7 @@ The Pi discovers the Teensy USB serial device (currently \texttt{/dev/ttyACM0}),
 
 Firmware starts in standby. USB disconnection or more than 750\,ms without a valid nonzero motor command returns it to standby. \texttt{STOPB}, zero duty and invalid commands also stop drive. \texttt{STATUSB} reports commanded duty and standby state; it does not measure terminal voltage, current or rotation. The Python script attempts \texttt{STOPB} on completion, Ctrl+C, termination or communication errors. Only one serial-control program should run at a time. The earlier onboard-LED and pin-41 LED commands remain supported.
 
-The original test used a historical login. For current access use \texttt{pi@10.0.0.149}. The following preserved command examples require an explicit bench-test setup:
+The original test used a historical login. For current access use \texttt{pi@10.0.0.20}. The following preserved command examples require an explicit bench-test setup:
 \begin{verbatim}
 python3 ~/robot0/drive_motorB_usb.py --check
 python3 ~/robot0/drive_motorB_usb.py --speed 50 --seconds 3

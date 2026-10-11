@@ -9,10 +9,11 @@ All scripts can be committed to GitHub and synced between the Mac and the Pi at 
 ## Network & Wi-Fi Management
 
 ### `set_fixed_ips.sh`
-Configures permanent, fixed static IPs on the Raspberry Pi:
-- **Wi-Fi (`wlan0`):** `192.168.68.126/24` (Metric: 600)
-- **Ethernet (`eth0`):** `192.168.68.125/24` (Metric: 100)
-- **Gateway & DNS:** `192.168.68.1` (Home Router)
+Configures permanent, fixed static IPs on the Raspberry Pi. `select_pi_ethernet.sh` chooses the Ethernet profile from which router answers:
+- **A, Wi-Fi (`asus-robot`):** `10.0.0.20/24`. Robot runs use this path. Unplug the Pi Ethernet cable.
+- **B, Ethernet to ASUS (`asus-ethernet`):** `10.0.0.120/24`
+- **C, Ethernet to the home router (`Wired connection 1`):** `192.168.68.220/24`, gateway and DNS `192.168.68.1`
+- **Spare home Wi-Fi (`robot-wifi`):** `192.168.68.126/24`. Not one of paths A, B, or C.
 
 Usage:
 ```bash

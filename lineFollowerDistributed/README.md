@@ -19,11 +19,11 @@ Robot runs use path A only.
 
 | Machine | Address | Interface |
 |---|---|---|
-| Pi | `10.0.0.149` | Wi-Fi to ASUS AirBears 3 |
+| Pi | `10.0.0.20` | Wi-Fi to ASUS AirBears 3 |
 | Desktop | `10.0.0.2` | Ethernet into the ASUS |
 | ASUS | `10.0.0.1` | transports packets, does not steer |
 
-`runOperator` refuses any Pi address other than `10.0.0.149`. Paths B (`10.0.0.24`) and C (`192.168.68.125`) are for SSH maintenance when an Ethernet cable is plugged in. Unplug that cable before a robot run.
+`runOperator` refuses any Pi address other than `10.0.0.20`. Paths B (`10.0.0.120`) and C (`192.168.68.220`) are for SSH maintenance when an Ethernet cable is plugged in. Unplug that cable before a robot run.
 
 UDP is Pi `:5000` and Desktop `:5001`. The Pi controller takes those addresses from the SSH connection that started it. The desktop operator binds the address printed in that SSH route.
 
@@ -48,7 +48,7 @@ When the Pi controller starts, it opens that latest file and hashes it. `runOper
 
 ## Commands
 
-All of these are run on the Mac, from `onDesktop/`. They SSH to `pi@10.0.0.149` with the key already in `~/.ssh/config`.
+All of these are run on the Mac, from `onDesktop/`. They SSH to `pi@10.0.0.20` with the key already in `~/.ssh/config`.
 
 ```bash
 ./makeBin              # compile both programs and flash the Teensy
@@ -58,7 +58,7 @@ All of these are run on the Mac, from `onDesktop/`. They SSH to `pi@10.0.0.149` 
 ./stopPlant            # interrupt both if a run is stuck
 ```
 
-`makeBin` and `updateBin` accept `--pi 10.0.0.149`. `runOperator` accepts:
+`makeBin` and `updateBin` accept `--pi 10.0.0.20`. `runOperator` accepts:
 
 - `--duration SECONDS` (default 30). The same value is given to both programs. It is the driving window after the startup clock handshake, not the whole process lifetime.
 - `--speed 0..1` (default 0.5 from the operator config).

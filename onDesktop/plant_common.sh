@@ -4,7 +4,7 @@ set -euo pipefail
 PLANT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PLANT_SRC="$PLANT_ROOT/lineFollowerDistributed"
 PLANT_BIN="$PLANT_ROOT/lineFollowerDistributedBin"
-PI_HOST="${PI_HOST:-10.0.0.149}"
+PI_HOST="${PI_HOST:-10.0.0.20}"
 PI_USER=pi
 PI_ROOT=/home/pi/plant_lineFollower
 PI_SRC=$PI_ROOT/lineFollowerDistributed

@@ -23,7 +23,7 @@ nmcli connection modify "asus-robot" \
     connection.autoconnect yes \
     connection.autoconnect-priority 200 \
     ipv4.method manual \
-    ipv4.addresses 10.0.0.149/24 \
+    ipv4.addresses 10.0.0.20/24 \
     ipv4.gateway "" \
     ipv4.dns "" \
     ipv4.never-default yes \
@@ -36,7 +36,7 @@ nmcli connection modify "Wired connection 1" \
     connection.autoconnect yes \
     connection.autoconnect-priority 100 \
     ipv4.method manual \
-    ipv4.addresses 192.168.68.125/24 \
+    ipv4.addresses 192.168.68.220/24 \
     ipv4.gateway 192.168.68.1 \
     ipv4.dns "192.168.68.1 8.8.8.8" \
     ipv4.route-metric 100
@@ -48,7 +48,7 @@ if nmcli -g connection.id connection show "asus-ethernet" >/dev/null 2>&1; then
         connection.autoconnect yes \
         connection.autoconnect-priority 90 \
         ipv4.method manual \
-        ipv4.addresses 10.0.0.24/24 \
+        ipv4.addresses 10.0.0.120/24 \
         ipv4.gateway "" \
         ipv4.dns "" \
         ipv4.never-default yes \
@@ -59,7 +59,7 @@ else
         connection.autoconnect no \
         connection.autoconnect-priority 90 \
         ipv4.method manual \
-        ipv4.addresses 10.0.0.24/24 \
+        ipv4.addresses 10.0.0.120/24 \
         ipv4.never-default yes \
         ipv4.route-metric 200 \
         ipv6.method disabled
@@ -94,13 +94,13 @@ nmcli connection reload
 echo ""
 echo "=== Successfully configured fixed IPs ==="
 echo "Wi-Fi home   (robot-wifi):            192.168.68.126/24"
-echo "Wi-Fi ASUS   (asus-robot):            10.0.0.149/24"
-echo "Ethernet home (Wired connection 1):   192.168.68.125/24"
-echo "Ethernet ASUS (asus-ethernet):        10.0.0.24/24"
+echo "Wi-Fi ASUS   (asus-robot):            10.0.0.20/24"
+echo "Ethernet home (Wired connection 1):   192.168.68.220/24"
+echo "Ethernet ASUS (asus-ethernet):        10.0.0.120/24"
 echo "Ethernet direct (robot-direct-ethernet): 192.168.77.2/24"
 echo "Gateway / DNS on the home profiles:   192.168.68.1"
 echo ""
-echo "Path A  no Ethernet cable              ssh pi@10.0.0.149"
-echo "Path B  Ethernet cable plugged into ASUS   ssh pi@10.0.0.24"
-echo "Path C  Ethernet cable plugged into home   ssh pi@192.168.68.125"
+echo "Path A  no Ethernet cable              ssh pi@10.0.0.20"
+echo "Path B  Ethernet cable plugged into ASUS   ssh pi@10.0.0.120"
+echo "Path C  Ethernet cable plugged into home   ssh pi@192.168.68.220"
 "$base/select_pi_ethernet.sh" || true
