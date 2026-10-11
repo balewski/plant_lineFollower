@@ -3,7 +3,7 @@
 set -euo pipefail
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     echo "stopPlant [--pi 10.0.0.20]"
-    echo "Send SIGINT to run_operator on this Mac and to controller on the Pi."
+    echo "Send SIGINT to run_operator and clock_probe on this Mac, and to controller, gpio_clock and clock_probe on the Pi."
     exit 0
 fi
 while [[ $# -gt 0 ]]; do
@@ -18,6 +18,9 @@ if pkill -INT -f "$PLANT_BIN/run_operator"; then
     echo "Interrupted Mac operator"
 else
     echo "Mac operator was not running"
+fi
+if pkill -INT -f "$PLANT_BIN/clock_probe"; then
+    echo "Interrupted Mac clock_probe"
 fi
 
 ssh_pi "bin='$PI_BIN'
@@ -34,5 +37,8 @@ else
 fi
 if pkill -INT -f \$bin/gpio_clock; then
     echo 'Interrupted gpio_clock'
+fi
+if pkill -INT -f \$bin/clock_probe; then
+    echo 'Interrupted clock_probe'
 fi
 " || echo "Could not reach ${PI_SSH}"

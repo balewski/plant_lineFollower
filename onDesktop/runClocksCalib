@@ -1,0 +1,218 @@
+#!/bin/bash
+# Measure Mac-Pi delay on both ASUS paths, then Pi-Teensy delay on the timing wire.
+# Requires path B: Pi Ethernet in an ASUS LAN port, Pi Wi-Fi still connected,
+# Desktop Ethernet on the ASUS. Does not move the wheels or change Teensy firmware.
+set -euo pipefail
+pairs=100
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat << 'EOF'
+runClocksCalib [--pairs N]
+
+Path B only. Pi Ethernet 10.0.0.120 and Pi Wi-Fi 10.0.0.20 both stay up.
+Desktop Ethernet is 10.0.0.2.
+
+1. Mac-Pi: UDP probes alternate between those two Pi addresses.
+   Corrected round trip removes Pi handling time. One-way delay is not split in half.
+2. Pi-Teensy: gpio_clock, 200 edges on Teensy pin 20 to Pi GPIO23.
+   The controller must not be running; this command owns /dev/serial0.
+
+--pairs is the number of Mac-Pi probe pairs (default 100, 25 ms apart).
+The result is one JSON on the Pi: config/clock_calib.json. It stores the
+printed summary for both paths and the Pi-Teensy edges, plus the boot hash8
+and the Pi local time. It does not store individual probes or edges. A later
+reboot writes a new config/boot.json and the old clock file no longer matches.
+Stop a stuck run from another terminal with stopPlant.
+EOF
+    exit 0
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --pairs) pairs="$2"; shift 2 ;;
+        *) echo "Unknown option $1" >&2; exit 1 ;;
+    esac
+done
+[[ "$pairs" =~ ^[0-9]+$ && "$pairs" -ge 1 && "$pairs" -le 100000 ]] || { echo "ERROR: --pairs must be 1..100000" >&2; exit 1; }
+
+export PI_HOST=10.0.0.120
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/plant_common.sh"
+
+PI_ETH=10.0.0.120
+PI_WIFI=10.0.0.20
+DESKTOP=10.0.0.2
+ETH_PORT=53120
+WIFI_PORT=53121
+INTERVAL_MS=25
+
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+[[ -x "$PLANT_BIN/clock_probe" ]] || die "Missing $PLANT_BIN/clock_probe. Run updateBin first."
+ping -c 1 -W 2000 "$PI_ETH" >/dev/null 2>&1 || die "Pi Ethernet $PI_ETH does not answer. Plug the Pi cable into an ASUS LAN port."
+ping -c 1 -W 2000 "$PI_WIFI" >/dev/null 2>&1 || die "Pi Wi-Fi $PI_WIFI does not answer. Path B keeps Wi-Fi connected."
+
+desktop_iface=""
+for iface in $(ifconfig -l); do
+    if ifconfig "$iface" 2>/dev/null | grep -q "inet $DESKTOP "; then
+        desktop_iface=$iface
+        break
+    fi
+done
+[[ -n "$desktop_iface" ]] || die "Desktop address $DESKTOP is not up. Plug Desktop Ethernet into the ASUS."
+
+ssh_pi "test -x '$PI_BIN/clock_probe' && test -x '$PI_BIN/gpio_clock'" || die "Missing Pi clock programs. Run updateBin first."
+if ssh_pi "pidfile='$PI_BIN/controller.pid'; [[ -f \$pidfile ]] && kill -0 \$(cat \$pidfile) 2>/dev/null"; then
+    die "Pi controller is running and owns /dev/serial0. Run stopPlant first."
+fi
+
+ssh_pi "'$PI_ROOT/config/write_boot_stamp.sh'"
+out=$(mktemp -d)
+limit=$(( pairs * 2 * INTERVAL_MS / 1000 + 60 ))
+pids=()
+
+cleanup() {
+    local status=$?
+    if [[ ${#pids[@]} -gt 0 ]]; then
+        ssh_pi "kill -TERM ${pids[*]} 2>/dev/null || true" || true
+    fi
+    pkill -INT -f "$PLANT_BIN/clock_probe client" 2>/dev/null || true
+    rm -rf "$out"
+    ssh_pi "rm -f /tmp/clock_probe_ethernet.log /tmp/clock_probe_wifi.log /tmp/clock_calib_probes.csv /tmp/clock_calib_gpio.json" || true
+    exit "$status"
+}
+trap cleanup EXIT INT TERM
+
+echo "Mac-Pi clock: Ethernet $PI_ETH and Wi-Fi $PI_WIFI, $pairs pairs"
+start_server() {
+    local name=$1 ip=$2 dev=$3 port=$4 tx=$5
+    local log="$out/${name}.log"
+    local pid
+    pid="$(ssh_pi ": > /tmp/clock_probe_${name}.log; setsid nohup '$PI_BIN/clock_probe' server --bind '$ip' --interface '$dev' --peer '$DESKTOP' --port '$port' --seconds '$limit' --tx '$tx' >> /tmp/clock_probe_${name}.log 2>&1 < /dev/null & echo \$!")"
+    pids+=("$pid")
+    local i
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+        if ssh_pi "grep -q '^READY ' /tmp/clock_probe_${name}.log"; then
+            ssh_pi "cat /tmp/clock_probe_${name}.log" | tee "$log"
+            return 0
+        fi
+        sleep 1
+    done
+    ssh_pi "cat /tmp/clock_probe_${name}.log" | tee "$log" || true
+    die "Pi $name clock server did not become ready"
+}
+start_server ethernet "$PI_ETH" eth0 "$ETH_PORT" software
+start_server wifi "$PI_WIFI" wlan0 "$WIFI_PORT" application
+
+echo "Probing from Desktop $DESKTOP on $desktop_iface"
+set +e
+"$PLANT_BIN/clock_probe" client \
+    --bind "$DESKTOP" --interface "$desktop_iface" \
+    --ethernet "$PI_ETH" --wifi "$PI_WIFI" \
+    --pairs "$pairs" --interval-ms "$INTERVAL_MS" \
+    --csv "$out/probes.csv"
+client_rc=$?
+set -e
+[[ "$client_rc" -eq 0 ]] || die "Mac-Pi clock probe failed"
+
+python3 - "$out/probes.csv" << 'PY'
+import csv, sys
+rows = list(csv.DictReader(open(sys.argv[1])))
+print("Mac-Pi results")
+for path in ("ethernet", "wifi"):
+    ok = [r for r in rows if r["path"] == path and r["status"] == "ok"]
+    bad = [r for r in rows if r["path"] == path and r["status"] != "ok"]
+    if not ok:
+        print(f"  {path}: no valid probes ({len(bad)} failed)")
+        continue
+    rtt = sorted(int(r["rtt_ns"]) for r in ok)
+    mid = sorted((int(r["offset_lower_ns"]) + int(r["offset_upper_ns"])) // 2 for r in ok)
+    half = sorted((int(r["offset_upper_ns"]) - int(r["offset_lower_ns"])) // 2 for r in ok)
+    def ms(v):
+        return f"{v / 1e6:.3f}"
+    print(f"  {path}: valid {len(ok)} failed {len(bad)}")
+    print(f"    corrected round trip ms  min {ms(rtt[0])}  median {ms(rtt[len(rtt)//2])}")
+    print(f"    offset half-width ms     median {ms(half[len(half)//2])}  (Desktop - Pi midpoint {ms(mid[len(mid)//2])} ms is clock origin, not delay)")
+PY
+
+echo "Stopping Mac-Pi servers"
+ssh_pi "kill -TERM ${pids[*]} 2>/dev/null || true" || true
+pids=()
+
+echo "Pi-Teensy clock: 200 edges, Teensy pin 20 to Pi GPIO23"
+ssh_pi "'$PI_BIN/gpio_clock' --samples 200 --blinks 3 --label clocks --output /tmp/clock_calib_gpio.json"
+scp -4 -o ConnectTimeout=8 "$out/probes.csv" "${PI_SSH}:/tmp/clock_calib_probes.csv"
+ssh_pi "python3 - << 'PY'
+import csv, json, os
+from datetime import datetime
+config = '/home/pi/plant_lineFollower/config'
+boot = json.load(open(config + '/boot.json'))
+if len(boot.get('hash8', '')) != 8:
+    raise SystemExit('boot.json has no hash8')
+
+def median(values):
+    return values[len(values) // 2]
+
+def path_summary(rows, path):
+    ok = [row for row in rows if row['path'] == path and row['status'] == 'ok']
+    failed = sum(row['path'] == path and row['status'] != 'ok' for row in rows)
+    if not ok:
+        return {'valid': 0, 'failed': failed}
+    rtt = sorted(int(row['rtt_ns']) for row in ok)
+    mid = sorted((int(row['offset_lower_ns']) + int(row['offset_upper_ns'])) // 2 for row in ok)
+    half = sorted((int(row['offset_upper_ns']) - int(row['offset_lower_ns'])) // 2 for row in ok)
+    def ms(value):
+        return value / 1e6
+    return {
+        'valid': len(ok), 'failed': failed,
+        'rtt_ms': {'min': ms(rtt[0]), 'median': ms(median(rtt))},
+        'half_width_ms': {'median': ms(median(half))},
+        'midpoint_ms': {'median': ms(median(mid))},
+    }
+
+rows = list(csv.DictReader(open('/tmp/clock_calib_probes.csv')))
+gpio = json.load(open('/tmp/clock_calib_gpio.json'))
+change = gpio.get('offset_change_from_first_us') or {}
+residual = gpio.get('detrended_residual_us') or {}
+bracket = gpio.get('teensy_bracket_us') or {}
+delivery = gpio.get('userspace_delivery_delay_us') or {}
+
+def seconds_from_us(value):
+    return None if value is None else float(value) / 1e6
+
+pi_teensy = {
+    'complete': gpio.get('complete'),
+    'valid_edges': gpio.get('valid_samples'),
+    'requested_edges': gpio.get('requested_samples'),
+    'stop_confirmed': gpio.get('stop_confirmed'),
+    'first_pulse_offset_s': seconds_from_us(gpio.get('baseline_offset_us')),
+    'nominal_offset_s': seconds_from_us(gpio.get('nominal_offset_at_reference_us')),
+    'reference_pi_s': None if not gpio.get('reference_pi_monotonic_ns') else gpio['reference_pi_monotonic_ns'] / 1e9,
+    'offset_change_us': {'q1': change.get('q1'), 'median': change.get('median'), 'q3': change.get('q3')},
+    'drift_ppm': gpio.get('fitted_drift_ppm'),
+    'detrended_residual_range_us': residual.get('range'),
+    'teensy_bracket_max_us': bracket.get('max'),
+    'userspace_delivery_median_us': delivery.get('median'),
+}
+if gpio.get('error'):
+    pi_teensy['error'] = gpio['error']
+body = {
+    'hash8': boot['hash8'],
+    'local_time': datetime.now().astimezone().isoformat(timespec='seconds'),
+    'uptime_s': float(open('/proc/uptime').read().split()[0]),
+    'mac_pi': {'ethernet': path_summary(rows, 'ethernet'), 'wifi': path_summary(rows, 'wifi')},
+    'pi_teensy': pi_teensy,
+}
+dest = config + '/clock_calib.json'
+tmp = dest + '.tmp'
+with open(tmp, 'w') as handle:
+    json.dump(body, handle, indent=2)
+    handle.write('\n')
+    handle.flush()
+    os.fsync(handle.fileno())
+os.replace(tmp, dest)
+print('hash8', body['hash8'])
+print('uptime_s', body['uptime_s'])
+print('local_time', body['local_time'])
+print(dest)
+PY"
+rm -rf "$out"
+ssh_pi "rm -f /tmp/clock_probe_ethernet.log /tmp/clock_probe_wifi.log /tmp/clock_calib_probes.csv /tmp/clock_calib_gpio.json"
+trap - EXIT INT TERM

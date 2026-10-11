@@ -4,7 +4,7 @@ set -euo pipefail
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     echo "statusPlant [--pi 10.0.0.20]"
     echo "Wi-Fi only. Ready means .20 answers, neither program is running,"
-    echo "Pi UART /dev/serial0 exists, and photo3_calib.latest.json is complete and valid."
+    echo "Pi UART /dev/serial0 exists, and config/photo3_calib.json is present."
     exit 0
 fi
 while [[ $# -gt 0 ]]; do
@@ -44,16 +44,18 @@ print('uart:', 'present' if os.path.exists('/dev/serial0') else 'missing')
 print('teensy-usb:', 'present' if os.path.exists('/dev/ttyACM0') else 'missing')
 try:
     report = json.load(open(calib))
-except OSError as exc:
+    sensors = report.get('sensors') or {}
+    usable = all(isinstance(sensors.get(name, {}).get(surface, {}).get('mean'), (int, float))
+                 for name in ('A', 'B', 'C') for surface in ('low_white', 'high_black'))
+except (OSError, AttributeError, TypeError, ValueError) as exc:
     print('calibration: missing', exc)
     sys.exit(0)
-print('calibration: status=%s valid=%s started=%s' % (
-    report.get('status'), report.get('valid'), report.get('started')))
+print('calibration: present' if usable else 'calibration: unusable')
 PY")"
 printf '%s\n' "$remote" | sed 's/^/  /'
 printf '%s\n' "$remote" | grep -q 'controller: not-running' || ready=0
 printf '%s\n' "$remote" | grep -q 'uart: present' || ready=0
-printf '%s\n' "$remote" | grep -q 'calibration: status=complete valid=True' || ready=0
+printf '%s\n' "$remote" | grep -q 'calibration: present' || ready=0
 
 if pgrep -f "$PLANT_BIN/run_operator" >/dev/null 2>&1; then
     echo "  mac operator: running"

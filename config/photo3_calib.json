@@ -1,0 +1,63 @@
+{
+  "hash8": "c840842c",
+  "local_time": "2026-10-11T09:52:20-07:00",
+  "uptime_s": 768.06,
+  "started": "2026-10-11T09:51:48-07:00",
+  "status": "complete",
+  "valid": true,
+  "black_is_high": true,
+  "adc_bits": 10,
+  "configuration": {
+    "polarity": "rr"
+  },
+  "sensors": {
+    "A": {
+      "analog_pin": "A11",
+      "gpio_pin": 25,
+      "valid": true,
+      "issues": [],
+      "low_white": {
+        "mean": 34.650375939849624,
+        "stddev": 18.433202709303853,
+        "n": 266
+      },
+      "high_black": {
+        "mean": 818,
+        "stddev": 53.19129094913772,
+        "n": 68
+      }
+    },
+    "B": {
+      "analog_pin": "A12",
+      "gpio_pin": 26,
+      "valid": true,
+      "issues": [],
+      "low_white": {
+        "mean": 35.31404958677686,
+        "stddev": 15.77225520194266,
+        "n": 242
+      },
+      "high_black": {
+        "mean": 959.5652173913044,
+        "stddev": 66.8205406647646,
+        "n": 69
+      }
+    },
+    "C": {
+      "analog_pin": "A13",
+      "gpio_pin": 27,
+      "valid": true,
+      "issues": [],
+      "low_white": {
+        "mean": 64.48085106382979,
+        "stddev": 12.829363993167245,
+        "n": 235
+      },
+      "high_black": {
+        "mean": 999.743119266055,
+        "stddev": 44.435430405986544,
+        "n": 109
+      }
+    }
+  }
+}

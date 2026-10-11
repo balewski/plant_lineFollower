@@ -19,21 +19,21 @@
 \begin{document}
 
 \title{Current Line-Following Robot: Construction, Wiring and Control}
-\author{Jan Balewski, NERSC, LBNL\\[0.5em]Updated September 28, 2026}
+\author{Jan Balewski, NERSC, LBNL\\[0.5em]Updated October 11, 2026}
 \maketitle
 
-\noindent This document describes the current three-sensor, two-wheel robot and its working local line follower. The ASUS network is configured and SSH is verified. The remote Desktop controller is implemented and deployed; motor-disabled checks and short moving line-following runs are recorded, with clock calibration and timing telemetry. Long-term neural workloads, motion simulation and historical prototypes are retained in the appendices.
+\noindent This document describes the current three-sensor, two-wheel robot and its working local line follower. The ASUS network is configured and SSH is verified. The remote Desktop controller is implemented and deployed; motor-disabled checks and short moving line-following runs are recorded. Clock-delay measurements and the earlier timing telemetry are in the appendices, with long-term neural workloads, motion simulation and historical prototypes.
 
 \tableofcontents
 \subimport{line_folower_figs/}{section_physical_robot.tex}
-\subimport{line_folower_figs/}{section_electrical_robot.tex}
 \subimport{line_folower_figs/}{section_robot_network.tex}
+\subimport{line_folower_figs/}{section_electrical_robot.tex}
 \subimport{line_folower_figs/}{section_local_line_follower.tex}
 \subimport{line_folower_figs/}{section_remote_control.tex}
-\subimport{line_folower_figs/}{section_gpio_clock.tex}
 
 \clearpage
 \appendices
+\subimport{line_folower_figs/}{section_gpio_clock.tex}
 \subimport{line_folower_figs/}{appendix_long_term_goal.tex}
 \subimport{line_folower_figs/}{appendix_robot_motion.tex}
 \subimport{line_folower_figs/}{appendix_photo3_calibration.tex}

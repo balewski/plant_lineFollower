@@ -1,0 +1,12 @@
+[Unit]
+Description=Record the Pi boot stamp used by calibrations
+After=local-fs.target
+Before=multi-user.target
+
+[Service]
+Type=oneshot
+User=pi
+ExecStart=/home/pi/plant_lineFollower/config/write_boot_stamp.sh
+
+[Install]
+WantedBy=multi-user.target

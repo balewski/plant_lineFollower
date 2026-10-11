@@ -227,8 +227,6 @@ int main(int argc,char**argv){
  if(!stopped&&error.empty())error="Could not confirm final GPIO stop / motor standby";
  U finished=now();Stats s=analyze(rows);bool complete=error.empty()&&s.n==count&&stopped;
  try{
-  std::time_t epoch=std::time(nullptr);std::tm tm{};localtime_r(&epoch,&tm);char date[32];std::strftime(date,sizeof date,"%Y%m%d_%H%M%S",&tm);
-  fs::path archive=root/"out/raspberry_pi"/(std::string("pi_teensy_clock_")+date+"_"+std::to_string(getpid())+".json");fs::path csvpath=archive;csvpath.replace_extension(".csv");
   std::ostringstream o;o<<std::fixed<<std::setprecision(6);
   o<<"{\n\"schema\":2,\"complete\":"<<(complete?"true":"false")<<",\"error\":"<<(error.empty()?"null":quote(error))<<",\"label\":"<<quote(label)<<",\"cpu_load\":"<<(cpu_load?"true":"false")<<",\"requested_samples\":"<<count<<",\"valid_samples\":"<<s.n<<",\"requested_rate_hz\":"<<rate<<",\"elapsed_s\":"<<(finished-started)/1e9<<",\"stop_confirmed\":"<<(stopped?"true":"false")<<",\"session\":"<<quote(hex(session))<<",\n";
   o<<"\"firmware\":"<<quote(firmware)<<",\"pi_clock\":\"CLOCK_MONOTONIC\",\"pi_gpio\":23,\"pi_header_pin\":16,\"teensy_pin\":20,\"series_resistor_ohm\":5000,\"debounce_us\":0,\"timestamp_method\":\"Linux GPIO v2 kernel interrupt event; not userspace wakeup\",\n";
@@ -236,28 +234,22 @@ int main(int argc,char**argv){
   o<<"\"baseline_offset_us\":"<<(s.n?std::to_string(s.baseline):"null")<<",\"offset_change_from_first_us\":";stats_json(o,s.changes);o<<',';
   o<<"\"offset_us\":";stats_json(o,s.offsets);o<<",\"teensy_bracket_us\":";stats_json(o,s.brackets);o<<",\"userspace_delivery_delay_us\":";stats_json(o,s.wakeup);o<<",\"detrended_residual_us\":";stats_json(o,s.residuals);
   o<<",\n\"absolute_accuracy_bound_us\":null,\"assumed_unmeasured_latency_allowance_us\":100,\"latency_bias_correction_us\":0,\"sub_100us_accuracy_validated\":false,\"teensy_timestamp_resolution_us\":1,\"pi_interrupt_latency_calibrated\":false,";
-  o<<"\"caveat\":\"Nominal estimate uses the requested assumption that unmeasured latency is below 100 us, with no bias correction. This is not a validated bound. Positive Pi interrupt latency biases Pi-minus-Teensy upward. Software write/readback brackets do not latch the physical edge; pad/wire/input delays and quantization remain. Drift fit includes changes in interrupt latency. UART arrival times are diagnostic only.\",\"archive_json\":"<<quote(archive.string())<<",\"raw_csv\":"<<quote(csvpath.string())<<",\n\"startup_flashes\":[";
+  o<<"\"caveat\":\"Nominal estimate uses the requested assumption that unmeasured latency is below 100 us, with no bias correction. This is not a validated bound. Positive Pi interrupt latency biases Pi-minus-Teensy upward. Software write/readback brackets do not latch the physical edge; pad/wire/input delays and quantization remain. Drift fit includes changes in interrupt latency. UART arrival times are diagnostic only.\",\n\"startup_flashes\":[";
   for(size_t i=0;i<flashes.size();++i){if(i)o<<',';auto&f=flashes[i];o<<"{\"high\":"<<(f.edge.high?"true":"false")<<",\"pi_gpio_edge_ns\":"<<f.edge.timestamp<<",\"pi_led_write_before_ns\":"<<f.pi_led_write_before<<",\"pi_led_write_after_ns\":"<<f.pi_led_write_after<<'}';}
   o<<"],\n\"records\":[\n";
-  std::ostringstream csv;csv<<"session,sequence,valid,pi_request_send_ns,pi_reply_receive_ns,pi_gpio_edge_ns,pi_userspace_receive_ns,kernel_sequence,kernel_line_sequence,teensy_before_us,teensy_after_us,teensy_bracket_us,pi_minus_teensy_offset_us,offset_change_from_first_us,error\n"<<std::fixed<<std::setprecision(3);
   for(size_t i=0;i<rows.size();++i){
    const auto&r=rows[i];if(i)o<<",\n";
    o<<"{\"sequence\":"<<r.seq<<",\"valid\":"<<(r.valid?"true":"false")<<",\"error\":"<<(r.error.empty()?"null":quote(r.error))<<",\"request_send_ns\":"<<r.sent<<",\"reply_receive_ns\":"<<r.reply_at<<",\"teensy_before_us\":"<<r.pulse.before<<",\"teensy_after_us\":"<<r.pulse.after<<",\"gpio_events\":[";
    for(size_t j=0;j<r.edges.size();++j){auto&e=r.edges[j];if(j)o<<',';o<<"{\"timestamp_ns\":"<<e.timestamp<<",\"userspace_receive_ns\":"<<e.read_at<<",\"seqno\":"<<e.seq<<",\"line_seqno\":"<<e.line_seq<<'}';}
    o<<"],\"uart_records\":[";for(size_t j=0;j<r.replies.size();++j){if(j)o<<',';o<<quote(r.replies[j]);}o<<"]}";
-   Edge e=r.edges.empty()?Edge{}:r.edges[0];
-   csv<<hex(session)<<','<<r.seq<<','<<r.valid<<','<<r.sent<<','<<r.reply_at<<','<<e.timestamp<<','<<e.read_at<<','<<e.seq<<','<<e.line_seq<<','<<r.pulse.before<<','<<r.pulse.after<<','<<(r.pulse.after>=r.pulse.before?r.pulse.after-r.pulse.before:0)<<',';
-   if(r.valid)csv<<r.offset();
-   csv<<',';if(r.valid)csv<<r.offset()-s.baseline;
-   csv<<','<<quote(r.error)<<'\n';
   }
-  o<<"\n]}\n";atomic_write(archive,o.str());atomic_write(csvpath,csv.str());atomic_write(output,o.str());fs::path latest_csv=output;latest_csv.replace_extension(".csv");atomic_write(latest_csv,csv.str());
+  o<<"\n]}\n";atomic_write(output,o.str());
   if(s.n){
    auto range=*std::max_element(s.residuals.begin(),s.residuals.end())-*std::min_element(s.residuals.begin(),s.residuals.end());
    std::cout<<"\nPi - Teensy nominal offset at Pi t="<<std::fixed<<std::setprecision(6)<<s.reference/1e9L<<" s: "<<std::setprecision(9)<<s.fit/1e6L<<" s\nChange from first pulse Q1 / median / Q3: "<<std::setprecision(3)<<std::showpos<<percentile(s.changes,.25)<<" / "<<percentile(s.changes,.5)<<" / "<<percentile(s.changes,.75)<<std::noshowpos<<" us\nFitted drift (Pi - Teensy): "<<s.ppm<<" ppm; detrended residual range: "<<range<<" us\nTeensy bracket max: "<<*std::max_element(s.brackets.begin(),s.brackets.end())<<" us; userspace delivery median: "<<percentile(s.wakeup,.5)<<" us\n";
    if(range>100)std::cout<<"NOTE: measured detrended variation exceeds 100 us.\n";
   }
-  std::cout<<"Valid edges: "<<s.n<<'/'<<count<<"; stop confirmed: "<<stopped<<"\nBias correction: 0; unmeasured latency assumed <100 us (not independently validated).\nJSON: "<<output<<"\nCSV: "<<latest_csv<<"\nArchive: "<<archive<<std::endl;
+  std::cout<<"Valid edges: "<<s.n<<'/'<<count<<"; stop confirmed: "<<stopped<<"\nBias correction: 0; unmeasured latency assumed <100 us (not independently validated).\nJSON: "<<output<<std::endl;
  }catch(const std::exception&e){std::cerr<<"Saving results failed: "<<e.what()<<'\n';return 1;}
  return complete?0:1;
 }

@@ -3,11 +3,11 @@
 \label{app:line-follower}
 \label{sec:local-controller}
 
-This section describes the local controller implemented by \texttt{lineFolower\_ver1.py}, with defaults updated on September 24, 2026. It uses the three-channel calibration from Appendix~\ref{app:photo3-calibration} and independently drives the left and right wheels. The controller permits an inside wheel to reverse on a sharp curve. Its three decisions are: whether any sensor detects tape, whether a channel has changed enough to update its accepted reading, and whether a left or right gradient is distinguishable from zero. One parameter, $k=\texttt{nSigma}$, controls all three decisions; the default is $k=2.5$.
+This section describes the local controller implemented by \texttt{lineFollower\_ver1.py}, with defaults updated on September 24, 2026. It uses the three-channel calibration from Appendix~\ref{app:photo3-calibration} and independently drives the left and right wheels. The controller permits an inside wheel to reverse on a sharp curve. Its three decisions are: whether any sensor detects tape, whether a channel has changed enough to update its accepted reading, and whether a left or right gradient is distinguishable from zero. One parameter, $k=\texttt{nSigma}$, controls all three decisions; the default is $k=2.5$.
 
 
 \subsection{Execution and Data Flow}
-The actual source filename is \texttt{lineFolower\_ver1.py} (not \texttt{lineFolower\_v1.py}), under \path{/home/pi/robot0/}. The master source is on Pi; the Mac's \texttt{robot0} tree is a mirror. The program imports serial helpers from \texttt{photo3\_calib.py}; the existing local program is not a standalone one-file distribution.
+The source file is \path{lineFollower_ver1.py} in \path{onPi/localControl/}. The program imports serial helpers from \texttt{photo3\_calib.py}; the existing local program is not a standalone one-file distribution.
 
 Before opening UART, it validates the calibration and arguments. It then opens \texttt{/dev/serial0} exclusively at 115200 baud, verifies firmware features and pin mapping, requests \texttt{STOPALL}, and checks stopped status and an ADC triplet. The normal loop is sequential: request \texttt{ADC3}, evaluate the following equations, send \texttt{MOTORS left right} or \texttt{STOPALL}, require an acknowledgement, and sleep for the remainder of the target period. Desktop and ASUS are used for SSH and management; neither computes steering in this mode.
 
@@ -138,8 +138,8 @@ The controller targets 20 updates per second and prints current ADCs, accepted n
 \texttt{--speed} & 0.5 & Base PWM scale $s$; $0\le s\le1$. \\
 \texttt{--nSigma} & 2.5 & Nonnegative multiplier $k$ in tape detection, reading updates and gradient tests. \\
 \texttt{--rate} & 20\,Hz & Target control-loop rate; 10--100\,Hz. \\
-\texttt{--polarity} & From calibration & Left/right wiring signs, currently \texttt{rr}; options \texttt{ff}, \texttt{fr}, \texttt{rf}, \texttt{rr}. \\
-\texttt{--calibration} & Latest JSON & \path{out/photo3_calib.latest.json}, relative to the program location; requires complete, valid calibration. \\
+\texttt{--polarity} & \texttt{rr} & Left/right wiring signs; options \texttt{ff}, \texttt{fr}, \texttt{rf}, \texttt{rr}. \\
+\texttt{--calibration} & \path{config/photo3\_calib.json} & Reads each sensor's white and black mean and standard deviation. \\
 \texttt{--port} & \texttt{/dev/serial0} & Pi--Teensy UART device. \\
 \texttt{--check} & False & Verify calibration and readout while keeping motors stopped. \\
 \bottomrule
