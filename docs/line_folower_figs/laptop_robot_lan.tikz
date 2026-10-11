@@ -17,7 +17,7 @@
     \textbf{Desktop}\\[2pt]
     Wi-Fi \texttt{192.168.68.107}\\
     Ethernet \texttt{10.0.0.2}};
-\node[pi] (pi) at (0,-5.6) {\textbf{Pi}};
+\node[pi] (pi) at (0,-5.6) {\textbf{pi2}};
 \node[asus] (asus) at (11.2,-5.6) {%
     \textbf{ASUS}\\[2pt]
     \texttt{10.0.0.1}\\
@@ -25,9 +25,9 @@
 \draw[wifi,blue!70!black] (home.east) -- node[lab,above] {\textbf{C}} (mac.west);
 \draw[eth,black!65] (mac.south) -- node[lab,right] {\textbf{A, B}} (asus.north);
 \draw[wifi,green!45!black] ([yshift=3mm]asus.west) --
-    node[lab,above] {\textbf{A}\ Wi-Fi only\ \texttt{10.0.0.149}} ([yshift=3mm]pi.east);
+    node[lab,above] {\textbf{A}\ Wi-Fi only\ \texttt{10.0.0.20}} ([yshift=3mm]pi.east);
 \draw[eth,green!45!black] ([yshift=-3mm]asus.west) --
-    node[lab,below] {\textbf{B}\ Ethernet\ \texttt{10.0.0.24}} ([yshift=-3mm]pi.east);
+    node[lab,below] {\textbf{B}\ Ethernet\ \texttt{10.0.0.120}} ([yshift=-3mm]pi.east);
 \draw[eth,blue!70!black] (home.south) --
-    node[lab,right] {\textbf{C}\ Ethernet\\ \texttt{192.168.68.125}} (pi.north);
+    node[lab,right] {\textbf{C}\ Ethernet\\ \texttt{192.168.68.220}} (pi.north);
 \end{tikzpicture}
