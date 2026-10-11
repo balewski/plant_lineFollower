@@ -1,15 +1,52 @@
 \clearpage
 \section{Clock Alignment and End-to-End Message Timing}
 \label{sec:gpio-clock}
-Message latency requires timestamps at clearly defined boundaries and a mapping between the clocks that produced them. This appendix records that measurement. A shared GPIO edge aligns Pi with Teensy, and four-timestamp UDP probes align Desktop with Pi. Offset is a difference between numerical clock readings, not a communication delay. \texttt{runOperator} does not collect these delays. The command is \texttt{onDesktop/runClocksCalib}, and it requires path~B: Pi Ethernet \texttt{10.0.0.120}, Pi Wi-Fi \texttt{10.0.0.20}, and Desktop Ethernet \texttt{10.0.0.2}.
+Message latency requires timestamps at clearly defined boundaries and a mapping between the clocks that produced them. Offset is a difference between numerical clock readings, not a communication delay. \texttt{runOperator} does not collect these delays. The measurement command is \texttt{onDesktop/runClocksCalib}. It requires path~B: Pi Ethernet \texttt{10.0.0.120}, Pi Wi-Fi \texttt{10.0.0.20}, and Desktop Ethernet \texttt{10.0.0.2}. A shared GPIO edge aligns Pi with Teensy, and four-timestamp UDP probes align Desktop with Pi.
 
-\subsection{Path B Measurement on October 11, 2026}
-\label{sec:clock-delay-20261011}
-One run of \texttt{runClocksCalib --pairs 40} was taken with the robot idle and the motors stopped. Firmware revision 16 was already installed; the timing wire is Teensy pin 20 through 5\,k$\Omega$ to Pi GPIO23. All 80 Mac--Pi probes were valid, 40 on each path, and all 200 Pi--Teensy edges were valid.
+\subsection{Current measurement}
+\label{sec:clock-method}
+\texttt{runClocksCalib} leaves the wheels stopped and does not change Teensy firmware. The controller must not be running, because this command owns \texttt{/dev/serial0}. The optional \texttt{--pairs} count defaults to 100, and probes on the two paths are 25\,ms apart. The command refreshes \path{config/boot.json}, measures both network paths, then measures the timing wire, and replaces \path{/home/pi/plant_lineFollower/config/clock_calib.json} with one summary.
+
+The Mac--Pi half starts a \texttt{clock\_probe} server on each Pi address: Ethernet \texttt{10.0.0.120} on \texttt{eth0}, port 53120, and Wi-Fi \texttt{10.0.0.20} on \texttt{wlan0}, port 53121. Desktop binds \texttt{10.0.0.2} and alternates probes between those servers. Each probe records Desktop send $D_1$, Pi receive $P_2$, Pi reply $P_3$ and Desktop receive $D_4$. Pi turnaround is removed from the corrected round trip,
+\begin{equation}
+R_{DP}=(D_4-D_1)-(P_3-P_2).
+\label{eq:clock-corrected-rtt}
+\end{equation}
+The saved half-width of a probe is half of that corrected round trip. It is a single-probe bound, not an intersection of many probes. The saved midpoint is the Desktop$-$Pi clock origin, not a network delay. One-way delay is not obtained by splitting the round trip in half. For each path the summary keeps the valid and failed counts, the minimum and median corrected round trip, and the median half-width and midpoint.
+
+The Pi--Teensy half then runs \texttt{gpio\_clock} for 200 rising edges at up to 20\,Hz. Teensy pin 20 drives Pi GPIO23 through 5\,k$\Omega$. Three 0.5\,s flashes on both LEDs check the wire and are excluded from the fit. The offset convention is Pi time minus Teensy time. The summary keeps whether the run completed, the valid and requested edge counts, standby confirmation, the first-pulse offset, the nominal offset at the Pi reference time, the quartiles of the change from the first pulse, the fitted drift in ppm, the detrended residual range, the maximum Teensy write bracket, and the median delay from the kernel edge into the Pi process. That userspace delivery delay is not part of the offset.
+
+Individual probes and individual edges are discarded after the summary is written. The file copies \texttt{hash8} from \path{config/boot.json} and adds the Pi local time and \texttt{uptime\_s}. A later reboot writes a new \path{boot.json}. Section~\ref{sec:init-datagram} sends this file to the operator in the initialization datagram. The operator uses it only when the two \texttt{hash8} values match; a robot run then takes the Wi-Fi half-width, not the Ethernet one. Equation~\eqref{eq:transmit-uncertainty} is the uncertainty reported from that summary.
+
+\subsection{Path-B summary on October 11, 2026}
+\label{sec:clock-delay-current}
+One default \texttt{runClocksCalib} run, 100 pairs, was taken with the robot idle and the motors stopped. The Pi boot \texttt{hash8} was \texttt{f03276bd}. The summary was written at Pi local time 2026-10-11T11:07:22$-$07:00, with \texttt{uptime\_s} $=2201.95$. All 200 Mac--Pi probes were valid, 100 on each path, and all 200 Pi--Teensy edges were valid. The summary does not store a round-trip maximum. The Desktop$-$Pi midpoint was $5.13328376\times 10^{8}$\,ms on Ethernet and $5.13328377\times 10^{8}$\,ms on Wi-Fi; both are clock origins, not delays.
 
 \begin{table}[H]
 \centering
-\caption{Mac--Pi corrected round trip and raw offset half-width, in milliseconds, October 11, 2026. Each half-width is half of that probe's corrected round trip. These are single-probe bounds, not the expanded intersection used for the September 28 session later in this appendix. The Desktop$-$Pi midpoint was about $4.968\times 10^{8}$\,ms on both paths; that value is the difference of clock origins, not a network delay.}
+\caption{Mac--Pi corrected round trip and offset half-width, in milliseconds, from \path{config/clock_calib.json} on October 11, 2026. Each half-width is half of that probe's corrected round trip. These are single-probe bounds. A robot run uses only the Wi-Fi half-width.}
+\label{tab:clock-delay-current}
+\begin{tabular}{lrrrr}
+\toprule
+Path & Valid & RTT min & RTT median & Half-width median \\
+\midrule
+Ethernet & 100 & 0.740 & 0.999 & 0.500 \\
+Wi-Fi & 100 & 1.644 & 2.072 & 1.036 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Pi--Teensy half completed 200 of 200 edges and confirmed standby. The first-pulse Pi$-$Teensy offset was $-5.530234$\,s, and the nominal offset at Pi reference time 2193.042\,s was $-5.530222$\,s. Change from the first pulse had quartiles $+5$, $+12$ and $+19$\,$\mu$s. The fitted drift was 2.739\,ppm and the detrended residual range was 37.7\,$\mu$s. The Teensy write bracket never exceeded 1\,$\mu$s. Median delivery of the kernel edge into the Pi process was 138\,$\mu$s; that delivery delay is not part of the offset. The same file was sent to the operator for the run in Section~\ref{sec:init-datagram}.
+
+The numerical results after this subsection are stale. They come from earlier captures, including full probe and edge archives that the current command does not keep.
+
+\subsection{Stale path-B result from October 11, 2026}
+\label{sec:clock-delay-20261011}
+\textbf{Stale.} This shorter run used \texttt{runClocksCalib --pairs 40} and kept the full Mac and Pi archives named below. It is not the summary now written to \path{config/clock_calib.json}.
+
+\begin{table}[H]
+\centering
+\caption{Stale. Mac--Pi corrected round trip and raw offset half-width, in milliseconds, October 11, 2026. Each half-width is half of that probe's corrected round trip. These are single-probe bounds, not the expanded intersection used for the September 28 session later in this appendix. The Desktop$-$Pi midpoint was about $4.968\times 10^{8}$\,ms on both paths; that value is the difference of clock origins, not a network delay.}
 \label{tab:clock-delay-20261011}
 \begin{tabular}{lrrrrr}
 \toprule
@@ -21,9 +58,9 @@ Wi-Fi & 40 & 1.621 & 2.110 & 9.398 & 1.055 \\
 \end{tabular}
 \end{table}
 
-The Pi--Teensy half used 200 rising edges at up to 20\,Hz after three 0.5\,s LED flashes. The first-pulse Pi$-$Teensy offset was $-5.483318$\,s, again a clock-origin difference. Change from that first pulse had quartiles $+10$, $+19$ and $+27$\,$\mu$s. The fitted drift was 3.008\,ppm and the detrended residual range was 71.5\,$\mu$s. The Teensy write bracket never exceeded 1\,$\mu$s. Median delivery of the kernel edge into the Pi process was 152\,$\mu$s; that delivery delay is not part of the offset. The Mac records are \path{lineFollowerDistributedBin/out/clocks/20261011_063747/}. The Pi record is \path{lineFollowerDistributedBin/out/pi_teensy_clock.latest.json}, archived as \path{out/raspberry_pi/pi_teensy_clock_20261011_061014_1144.json}.
+The Pi--Teensy half of this stale run used 200 rising edges at up to 20\,Hz after three 0.5\,s LED flashes. The first-pulse Pi$-$Teensy offset was $-5.483318$\,s, again a clock-origin difference. Change from that first pulse had quartiles $+10$, $+19$ and $+27$\,$\mu$s. The fitted drift was 3.008\,ppm and the detrended residual range was 71.5\,$\mu$s. The Teensy write bracket never exceeded 1\,$\mu$s. Median delivery of the kernel edge into the Pi process was 152\,$\mu$s; that delivery delay is not part of the offset. The Mac records are \path{lineFollowerDistributedBin/out/clocks/20261011_063747/}. The Pi record is \path{lineFollowerDistributedBin/out/pi_teensy_clock.latest.json}, archived as \path{out/raspberry_pi/pi_teensy_clock_20261011_061014_1144.json}.
 
-The subsections below keep the method and the September 27--28 recordings. Those earlier numbers are not replaced by this shorter path-B run.
+The subsections below keep the September 27--28 recordings and the earlier per-job procedure. Their numbers are stale as well. The shared-edge and four-timestamp definitions are the ones \texttt{runClocksCalib} still uses; the launch, the saved file and the lack of a per-job repeat are the current method in Section~\ref{sec:clock-method}.
 
 \subsection{Pi--Teensy Alignment Using a Shared GPIO Edge}
 \subsubsection{Purpose and Wiring}
@@ -46,16 +83,16 @@ All reported offsets here use the current convention
 A positive value means Pi's numerical clock reading is ahead. The approximately 2188\,s offset reflects different clock origins; it is not a transmission delay. Console progress reports the smaller change $\theta_i-\theta_1$, which can have either sign. Archived JSON schema 1 used the opposite sign; the analysis below converts it to this convention. Schema 2 and the current CSV name the convention explicitly. Raw timestamps are unchanged.
 
 \subsubsection{Software and Reproduction}
-The current Pi timing program is \path{lineFollowerDistributed/gpio_clock.cpp}, on the Pi at \path{/home/pi/plant_lineFollower/}. The archived captures below were taken with the earlier standalone program \path{measure_pi_teensy_clock}. Teensy runs Arduino C++ in \path{lineFollowerDistributed/firmware/halo_teensy_firmware/halo_teensy_firmware.ino}, firmware revision 16, with the \texttt{GPIO\_EDGE\_CLOCK} diagnostic commands. C++ gives direct access to Linux GPIO/UART calls and Teensy GPIO registers, avoids an interpreter in the acquisition path, and matches the existing controller implementation. It does not make Linux scheduling deterministic: precision here primarily comes from the kernel event timestamp and the Teensy write bracket.
+The current Pi timing program is \path{lineFollowerDistributed/gpio_clock.cpp}, started by \texttt{runClocksCalib} for 200 edges. That command keeps only the summary fields in Section~\ref{sec:clock-method}. The archived captures below were taken with the earlier standalone program \path{measure_pi_teensy_clock} and are stale. Teensy runs Arduino C++ in \path{lineFollowerDistributed/firmware/halo_teensy_firmware/halo_teensy_firmware.ino}, firmware revision 16, with the \texttt{GPIO\_EDGE\_CLOCK} diagnostic commands. C++ gives direct access to Linux GPIO/UART calls and Teensy GPIO registers, avoids an interpreter in the acquisition path, and matches the existing controller implementation. It does not make Linux scheduling deterministic: precision here primarily comes from the kernel event timestamp and the Teensy write bracket.
 
-Run on Pi, with other UART clients stopped:
+The stale September captures were run on Pi, with other UART clients stopped:
 \begin{verbatim}
 cd ~/robot0
 ./measure_pi_teensy_clock
 ./measure_pi_teensy_clock --samples 1000 --label idle
 ./measure_pi_teensy_clock --samples 1000 --cpu-load --label cpu-load
 \end{verbatim}
-The default is 200 pulses, taking about 12\,s including the flashes. The program prints progress and summary statistics, saves \path{out/pi_teensy_clock.latest.json} and \path{out/pi_teensy_clock.latest.csv}, and retains timestamped captures under \path{out/raspberry_pi/}. JSON includes raw edges, UART records, timestamps, errors, LED transitions, fit statistics and final motor-standby confirmation. The optional load is one busy C++ worker on Pi, not a full reproduction of moving-robot or network activity. The offline report script \path{docs/tools/plot_gpio_clock.py} uses Python's standard library to read these saved records and bin the data; PGFPlots renders the histogram. Python is not involved in acquiring the measurements.
+That older default was 200 pulses, taking about 12\,s including the flashes. It printed progress and summary statistics, saved \path{out/pi_teensy_clock.latest.json} and \path{out/pi_teensy_clock.latest.csv}, and retained timestamped captures under \path{out/raspberry_pi/}. Those JSON files include raw edges, UART records, timestamps, errors, LED transitions, fit statistics and final motor-standby confirmation. The optional load was one busy C++ worker on Pi, not a full reproduction of moving-robot or network activity. The offline report script \path{docs/tools/plot_gpio_clock.py} uses Python's standard library to read these saved records and bin the data; PGFPlots renders the histogram. Python is not involved in acquiring the measurements.
 
 \subsubsection{Measured Results and Distribution}
 Table~\ref{tab:gpio-clock-results} compares two completed runs collected on September 27, 2026. Both matched all 1,000 requested pulses and confirmed motor standby afterward. Each fit uses
@@ -67,7 +104,7 @@ Here $b$ is in $\mu$s/s, numerically ppm, and $r_i$ is the residual after removi
 
 \begin{table}[H]
 \centering\small
-\caption{Shared-edge clock measurement, normalized to Pi minus Teensy. Each reference time is Pi \texttt{CLOCK\_MONOTONIC}, not wall time.}
+\caption{Stale. Shared-edge clock measurement, September 27, 2026, normalized to Pi minus Teensy. Each reference time is Pi \texttt{CLOCK\_MONOTONIC}, not wall time.}
 \label{tab:gpio-clock-results}
 \input{figures/gpio_clock/result_table.tex}
 \end{table}
@@ -75,7 +112,7 @@ Here $b$ is in $\mu$s/s, numerically ppm, and $r_i$ is the residual after removi
 \begin{figure}[H]
 \centering
 \includegraphics[width=.94\linewidth]{figures/gpio_clock/histogram.pdf}
-\caption{Pi-minus-Teensy offset residuals after removing each run's fitted offset and drift. Common 2\,$\mu$s bins and logarithmic counts expose the small positive tails. Each panel contains all 1,000 valid pulses; empty bins are omitted. These are clock-measurement residuals, not UART-delay distributions.}
+\caption{Stale. Pi-minus-Teensy offset residuals after removing each run's fitted offset and drift, September 27, 2026. Common 2\,$\mu$s bins and logarithmic counts expose the small positive tails. Each panel contains all 1,000 valid pulses; empty bins are omitted. These are clock-measurement residuals, not UART-delay distributions.}
 \label{fig:gpio-clock-histogram}
 \end{figure}
 
@@ -111,17 +148,17 @@ Let $M(T)$ be the GPIO-derived conversion of Teensy time into Pi time, including
  \widehat D(T)=M(T)-\widehat\phi.
  \label{eq:desktop-teensy-map}
 \end{equation}
-For a constant-offset approximation this becomes $D-T=\theta-\phi$, with $\theta=\text{Pi}-\text{Teensy}$ as defined above. The software retains uncertainty intervals for both terms. Neither processor's clock is set or restarted, and wall-clock date/time is used only for run labels. A reboot or firmware reset requires a new calibration.
+For a constant-offset approximation this becomes $D-T=\theta-\phi$, with $\theta=\text{Pi}-\text{Teensy}$ as defined above. The software retains uncertainty intervals for both terms. Neither processor's clock is set or restarted, and wall-clock date/time is used only for run labels. A reboot writes a new \texttt{hash8} and requires a new \texttt{runClocksCalib}. A Teensy-only reset does not change that hash.
 
 A second set of 100 probes traverses Desktop--Pi--Teensy and back. Teensy timestamps complete request receipt and reply construction; Desktop timestamps send and receipt. Request and response on UART are each 51 bytes including LF. These exchanges supply an independent causal consistency check and a round-trip distribution. Equal byte counts balance serial wire time, but do not prove equal buffering or network delay. This end-to-end estimate is not substituted for the tighter GPIO-plus-UDP map.
 
 \subsubsection{Calibration Sequence, Drift and Saved Records}
 
-The integrated C++ controller/operator now gives each job a new session identifier and performs calibration before any motor arming. Pi runs its package-local \texttt{gpio\_clock} helper with exclusive UART ownership; it releases that ownership before reopening UART for the controller. One controller launch handles one job. Calibration failure, inconsistent clock mappings or a detected reset prevents normal continuation.
+\textbf{Stale procedure.} The integrated controller used to give each job a new session identifier and measure the clocks again before any motor arming. That repeat is no longer part of \texttt{runOperator}. The controller receives a job, sends the existing summary files, and arms; Section~\ref{sec:clock-method} is the measurement that produces \path{clock_calib.json}. In the old sequence, Pi ran its package-local \texttt{gpio\_clock} helper with exclusive UART ownership and released that ownership before reopening UART for the controller. One controller launch handled one job. Calibration failure, inconsistent clock mappings or a detected reset prevented normal continuation. The September numbers below belong to that procedure.
 
 \begin{table}[H]
 \centering\small
-\caption{Calibration and LED sequence for an integrated remote job. Each flash is 0.5\,s on and 0.5\,s off.}
+\caption{Stale. Previous calibration and LED sequence for an integrated remote job. Each flash is 0.5\,s on and 0.5\,s off. \texttt{runOperator} does not run this sequence.}
 \begin{tabular}{@{}L{4.1cm}L{7.8cm}L{4.0cm}@{}}
 \toprule
 Phase & Measurement or action & LED indication \\
@@ -136,7 +173,7 @@ Stop and drift check & Stop motors; repeat 200 GPIO edges and save the pre/post 
 
 The run LED remains on for zero wheel targets and motor-disabled jobs too: it indicates an active control job. STOP or the configured duration turns it off. Teensy firmware also turns it off and stops motors after 750\,ms without a valid motor-target heartbeat; unrelated clock queries cannot keep that indication alive. The Pi controller's existing command-freshness safeguard remains independent. Ctrl-C stops the job and skips the post-run calibration, recording an incomplete pair. The GPIO stages each add approximately 13\,s; they do not consume the requested drive duration.
 
-The primary mapping combines Pi-minus-Teensy from GPIO with Pi-minus-Desktop from network probes. End-to-end pings provide a consistency check and round-trip measurement, without requiring UART path symmetry for the primary estimate. Its reported uncertainty includes the assumed 100\,$\mu$s GPIO latency allowance, an assumed 50\,ppm error allowance for extrapolating the GPIO rate fit, and the network clock bounds. These remain conditional estimates, not a validated absolute accuracy guarantee. During the robot job, periodic Desktop--Pi probes and UART clock-anchor checks continue. The post-run GPIO measurement supplies an additional drift estimate for later analysis.
+In that stale integrated job, the primary mapping combined Pi-minus-Teensy from GPIO with Pi-minus-Desktop from network probes. End-to-end pings provided a consistency check and round-trip measurement, without requiring UART path symmetry for the primary estimate. Its reported uncertainty included the assumed 100\,$\mu$s GPIO latency allowance, an assumed 50\,ppm error allowance for extrapolating the GPIO rate fit, and the network clock bounds. These remain conditional estimates, not a validated absolute accuracy guarantee. During the robot job, periodic Desktop--Pi probes and UART clock-anchor checks continued, and the post-run GPIO measurement supplied an additional drift estimate. \texttt{runOperator} does not repeat those probes. Section~\ref{sec:remote-control} gives the uncertainty it reports from the saved summary.
 
 Both calibrations are written atomically to \texttt{.latest.json} files, with timestamped job archives retained:
 \begingroup\sloppy
@@ -145,7 +182,7 @@ Both calibrations are written atomically to \texttt{.latest.json} files, with ti
 \item Desktop directory: \path{2026_lineFollowerOperator/out/}. Its file \path{desktop_teensy_clock.latest.json} contains the GPIO summary, raw network and end-to-end probes, combined mapping and conditional uncertainty. A separate \texttt{desktop\_pi\_clock.latest.json} preserves the network calibration alone.
 \end{itemize}
 \endgroup
-Match the \texttt{job\_session} strings before joining Pi and Desktop records. The complete post-run GPIO capture remains on Pi; it is joined to Desktop data during later analysis. A failed attempt is recorded explicitly and does not silently reuse a successful calibration from a previous job or boot. Implementation and launch details are documented in \texttt{INTEGRATED\_CLOCK.md} in both self-contained packages.
+Match the \texttt{job\_session} strings before joining Pi and Desktop records from those stale jobs. The complete post-run GPIO capture remained on Pi and was joined to Desktop data during later analysis. A failed attempt was recorded explicitly and was not silently reused. The current command is different: \texttt{runClocksCalib} writes one summary, and a later robot run reuses it until \texttt{hash8} changes. Implementation notes for the old integrated jobs are in \texttt{INTEGRATED\_CLOCK.md} in both self-contained packages.
 
 
 A motor-disabled integrated validation on September 27 completed the five-second control phase with 486 accepted targets. Pi replaced seven waiting targets before UART transmission; all 479 targets actually sent to Teensy were acknowledged, with no nonzero motor writes. Both GPIO stages matched all 200 pulses; both Desktop calibration stages received all 100 replies. The combined startup uncertainty was $\pm1.403$\,ms under the stated assumptions, compared with $\pm5.699$\,ms from end-to-end pings alone. The pre/post GPIO drift estimate was 2.865\,ppm. Final standby and LED shutdown were verified; \texttt{VALIDATION\_INTEGRATED\_CLOCK.md} identifies the archived job records.
@@ -156,7 +193,7 @@ Figure~\ref{fig:desktop-clock-probes} uses the complete startup calibration of t
 \begin{figure}[H]
 \centering
 \includegraphics[width=.95\linewidth]{figures/desktop_clock/calibration_histograms.pdf}
-\caption{Startup clock-calibration probes for the 50\,Hz reference run. Turnaround between the responder's receive and reply timestamps is subtracted from Desktop's send-to-receive interval. The panels have different horizontal scales and bin widths; logarithmic counts show all tails. These are observed probe round trips, not distributions of the unknown true clock offset.}
+\caption{Stale. Startup clock-calibration probes for the 50\,Hz reference run, September 27, 2026. Turnaround between the responder's receive and reply timestamps is subtracted from Desktop's send-to-receive interval. The panels have different horizontal scales and bin widths; logarithmic counts show all tails. These are observed probe round trips, not distributions of the unknown true clock offset.}
 \label{fig:desktop-clock-probes}
 \end{figure}
 
@@ -209,7 +246,7 @@ Each UART byte needs 10 serial bits (start, eight data, stop), giving 11,520 byt
 
 \begin{table}[H]
 \centering\small
-\caption{Moving-run timing results from September 27 with the payloads above; the final row is the separate padded-command experiment. Directional columns and round trip are medians in ms; $u$ is the maximum per-cycle conditional one-way uncertainty in ms, rounded upward to 0.1\,ms. Cycles are complete matched observations, not all issued commands.}
+\caption{Stale. Moving-run timing results from September 27 with the payloads above; the final row is the separate padded-command experiment. Directional columns and round trip are medians in ms; $u$ is the maximum per-cycle conditional one-way uncertainty in ms, rounded upward to 0.1\,ms. Cycles are complete matched observations, not all issued commands.}
 \label{tab:desktop-clock-runs}
 \input{figures/desktop_clock/result_table.tex}
 \end{table}
@@ -221,7 +258,7 @@ The GPIO-plus-network startup uncertainty grows to approximately $\pm2.3$--$\pm2
 \begin{figure}[H]
 \centering
 \includegraphics[width=\linewidth]{figures/desktop_clock/latency_histograms.pdf}
-\caption{Control-loop latency at 50\,Hz, before and after padding the motor UART message. Histograms use common 0.5\,ms bins, normalized by each run's matched-cycle count, with logarithmic vertical scales and all outliers included. Adjacent colored bars represent the same bin. The first two panels depend on clock alignment; the third uses only Teensy's clock. The padded run stopped early and used a different track segment, so this is not a controlled steering-performance comparison.}
+\caption{Stale. Control-loop latency at 50\,Hz, September 27, 2026, before and after padding the motor UART message. Histograms use common 0.5\,ms bins, normalized by each run's matched-cycle count, with logarithmic vertical scales and all outliers included. Adjacent colored bars represent the same bin. The first two panels depend on clock alignment; the third uses only Teensy's clock. The padded run stopped early and used a different track segment, so this is not a controlled steering-performance comparison.}
 \label{fig:desktop-clock-latency}
 \end{figure}
 
@@ -234,7 +271,7 @@ The padded job ended after 4.045\,s when the 100\,ms freshness safeguard expired
 
 \subsubsection{Software and Reproducing These Figures}
 \begin{sloppypar}
-The current measurement programs are C++17: \path{lineFollowerDistributed/clock_probe.cpp} on both machines and \path{gpio_clock.cpp} on the Pi, launched by \texttt{onDesktop/runClocksCalib}. \path{controller.cpp} and \path{operator.cpp} run the robot and do not collect this clock delay. Teensy uses the shared Arduino C++ firmware described above. These implementations use direct GPIO/UART/socket interfaces and avoid Python interpreter and garbage-collection work in the timing path. C++ does not eliminate OS scheduling or Wi-Fi delays.
+The current measurement programs are C++17: \path{lineFollowerDistributed/clock_probe.cpp} on both machines and \path{gpio_clock.cpp} on the Pi, launched by \texttt{onDesktop/runClocksCalib}, which saves only the summary in Section~\ref{sec:clock-method}. \path{controller.cpp} and \path{operator.cpp} run the robot and do not collect this clock delay. Teensy uses the shared Arduino C++ firmware described above. These implementations use direct GPIO/UART/socket interfaces and avoid Python interpreter and garbage-collection work in the timing path. C++ does not eliminate OS scheduling or Wi-Fi delays. The four recordings and figures below are stale September 27 results; the current command does not write those archives.
 \end{sloppypar}
 
 Offline Python scripts from the earlier Desktop package join sample/command identities and timestamps: \path{prepare_stats_video.py}, \path{clock_alignment.py} and \path{integrated_clock_analysis.py}. The resulting per-cycle \path{timing_cycles.csv} contains the directional estimates, their bounds, compute time, round trip and spare. Swift renders the telemetry video; it does not acquire control-loop timestamps.
