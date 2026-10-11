@@ -3,7 +3,7 @@
 set -euo pipefail
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 MARKER=/etc/cloud/cloud-init.disabled
-STATE=/home/pi/plant_lineFolower/out/boot_optimization
+STATE=/home/pi/plant_lineFollower/out/boot_optimization
 OWNED="$STATE/cloud-init-disabled-by-this-script"
 fail() { echo "Stopped: $*" >&2; exit 1; }
 [[ "$(hostname)" == raspberrypi ]] || fail "This script is for raspberrypi only."
@@ -54,4 +54,4 @@ fi
 printf '%s disabled cloud-init; other services unchanged\n' "$(date -u --iso-8601=seconds)" >>"$STATE/actions.log"
 sync
 echo "cloud-init disabled for NEXT BOOT. Current network remains connected."
-echo "Undo: sudo /home/pi/plant_lineFolower/config/boot_optimize.sh --undo"
+echo "Undo: sudo /home/pi/plant_lineFollower/config/boot_optimize.sh --undo"

@@ -4,7 +4,7 @@ set -u
 export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 export LC_ALL=C SYSTEMD_PAGER=cat SYSTEMD_COLORS=0
 umask 077
-BASE=/home/pi/plant_lineFolower/out/boot_logs
+BASE=/home/pi/plant_lineFollower/out/boot_logs
 mkdir -p "$BASE"
 exec 9>"$BASE/.capture.lock"
 flock -n 9 || exit 0

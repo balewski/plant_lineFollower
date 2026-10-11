@@ -1,8 +1,8 @@
 # Configuration & Diagnostic Scripts
 
-This directory contains network configuration, boot optimization, and diagnostic scripts for both the host Mac and the Raspberry Pi (`plant_lineFolower`).
+This directory contains network configuration, boot optimization, and diagnostic scripts for both the host Mac and the Raspberry Pi (`plant_lineFollower`).
 
-All scripts can be committed to GitHub and synced between the Mac and the Pi at `/home/pi/plant_lineFolower/config`.
+All scripts can be committed to GitHub and synced between the Mac and the Pi at `/home/pi/plant_lineFollower/config`.
 
 ---
 

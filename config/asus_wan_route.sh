@@ -7,7 +7,7 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 IFACE=wlan0
 GW=10.0.0.1
-BASE=/home/pi/plant_lineFolower
+BASE=/home/pi/plant_lineFollower
 SCRIPT=$BASE/config/asus_wan_route.sh
 LOG=$BASE/out/wan_route.log
 mkdir -p -- "$BASE/out"
@@ -76,7 +76,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/home/pi/plant_lineFolower/config/asus_wan_route.sh
+ExecStart=/home/pi/plant_lineFollower/config/asus_wan_route.sh
 UNIT
     cat > /etc/systemd/system/asus-wan-route.timer << 'UNIT'
 [Unit]
@@ -94,7 +94,7 @@ UNIT
 #!/bin/sh
 [ "$1" = "wlan0" ] || exit 0
 case "$2" in
-    up|dhcp4-change) /home/pi/plant_lineFolower/config/asus_wan_route.sh ;;
+    up|dhcp4-change) /home/pi/plant_lineFollower/config/asus_wan_route.sh ;;
 esac
 UNIT
     chmod 755 /etc/NetworkManager/dispatcher.d/50-asus-wan-route

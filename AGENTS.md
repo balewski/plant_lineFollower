@@ -8,14 +8,14 @@
 ---
 
 ## 2. Workspace & Directory Structure
-- **Active Workspace**: `/Users/balewski/shared_volumes/2026_plant_lineFolower/`
+- **Active Workspace**: `/Users/balewski/shared_volumes/2026_plant_lineFollower/`
   - Do NOT use `/Users/balewski/shared_volumes/2026_robot1`.
 - **Configuration & Diagnostics**:
-  - All configuration and diagnostic files/scripts are located in `config/` (both on the Mac and on the Raspberry Pi: `~/plant_lineFolower/config/`).
+  - All configuration and diagnostic files/scripts are located in `config/` (both on the Mac and on the Raspberry Pi: `~/plant_lineFollower/config/`).
   - On the Raspberry Pi, do NOT place loose scripts or configuration files in `/home/pi/`. Keep `/home/pi/` clean.
 - **Robot Code on Raspberry Pi**:
-  - Robot runtime code and test scripts belong under `~/plant_lineFolower/onPi/` (e.g., `onPi/toys/`).
-  - Scripts running on the Pi must be self-contained within `~/plant_lineFolower/onPi/` with no dependencies on legacy `~/old-robot0`.
+  - Robot runtime code and test scripts belong under `~/plant_lineFollower/onPi/` (e.g., `onPi/toys/`).
+  - Scripts running on the Pi must be self-contained within `~/plant_lineFollower/onPi/` with no dependencies on legacy `~/old-robot0`.
 
 ---
 

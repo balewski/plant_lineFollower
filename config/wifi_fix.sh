@@ -57,12 +57,12 @@ PYSYNC
 
 usage() {
     cat <<'HELP'
-Usage: ~/plant_lineFolower/config/wifi_fix.sh [--check|--help]
+Usage: ~/plant_lineFollower/config/wifi_fix.sh [--check|--help]
 Run from the Pi console after Wi-Fi fails. Requests sudo if needed.
 Saves diagnostics, then tries reconnect, radio restart, and USB driver rebind.
 Stops after Wi-Fi has an IPv4 address and can ping its gateway.
 --check  Check prerequisites and current connection without changing anything.
-Logs: ~/plant_lineFolower/out/wifi_fix_*/
+Logs: ~/plant_lineFollower/out/wifi_fix_*/
 HELP
 }
 
