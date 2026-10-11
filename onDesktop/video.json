@@ -1,0 +1,8 @@
+{
+  "camera": "Web Camera",
+  "width": 1920,
+  "height": 1080,
+  "max_record_s": 45,
+  "startup_s": 30,
+  "tail_s": 2
+}

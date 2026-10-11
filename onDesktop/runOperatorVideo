@@ -1,0 +1,187 @@
+#!/bin/bash
+# Record the webcam, then run the plant, then burn the telemetry banner.
+# Wheels turn unless --disable-motors is given. Everything for the recording
+# stays under the repository tmp/video directory.
+set -euo pipefail
+cd "$(dirname "$0")"
+duration=8
+speed=""
+motors=1
+pi_host=""
+camera_override=""
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat << 'EOF'
+runOperatorVideo [--pi 10.0.0.20] [--duration SECONDS] [--speed 0..1]
+                 [--disable-motors] [--camera NAME]
+
+Records the webcam, starts the same plant run as runOperator, and writes
+telemetry.mp4. Camera name, size, and timing limits come from video.json.
+--camera replaces the camera name for this run.
+
+The recording length is startup_s + duration + tail_s. It must fit in
+max_record_s. The default duration is 8 seconds so the default fits in 45.
+Wheels turn unless --disable-motors is present.
+
+The recording directory is tmp/video/YYYYMMDD_HHMMSS/. It holds raw.mp4, the
+frame clock, both logs, overlay.json, telemetry_preview.png, and telemetry.mp4.
+EOF
+    exit 0
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --pi) pi_host="$2"; shift 2 ;;
+        --duration) duration="$2"; shift 2 ;;
+        --speed) speed="$2"; shift 2 ;;
+        --disable-motors) motors=0; shift ;;
+        --camera) camera_override="$2"; shift 2 ;;
+        *) echo "Unknown option $1" >&2; exit 1 ;;
+    esac
+done
+source "$(pwd)/plant_common.sh"
+if [[ -n "$pi_host" ]]; then
+    export PI_HOST="$pi_host"
+fi
+if [[ "$PI_HOST" != "10.0.0.20" ]]; then
+    die "The robot runs on Wi-Fi 10.0.0.20. Refusing --pi $PI_HOST."
+fi
+[[ -x "$PLANT_BIN/run_operator" ]] || die "Missing $PLANT_BIN/run_operator. Run updateBin first."
+
+eval "$(python3 - << 'PY'
+import json, shlex
+c = json.load(open("video.json"))
+for k in ("camera", "width", "height", "max_record_s", "startup_s", "tail_s"):
+    print("%s=%s" % (k, shlex.quote(str(c[k]))))
+PY
+)"
+if [[ -n "$camera_override" ]]; then
+    camera="$camera_override"
+fi
+if [[ "$width" != "1920" || "$height" != "1080" ]]; then
+    die "video.json size must stay 1920x1080. The banner is drawn for that frame."
+fi
+record_s="$(python3 -c "print(float('$startup_s') + float('$duration') + float('$tail_s'))")"
+python3 -c "import sys; sys.exit(0 if float('$record_s') <= float('$max_record_s') and float('$duration') > 0 else 1)" \
+    || die "Recording ${record_s}s exceeds max_record_s ${max_record_s}s. Lower --duration or raise video.json."
+
+echo "Video (effective values):"
+echo "  camera = ${camera}"
+echo "  frame = ${width}x${height}"
+echo "  record_s = ${record_s} (startup ${startup_s} + duration ${duration} + tail ${tail_s})"
+echo "  max_record_s = ${max_record_s}"
+if [[ "$motors" -eq 1 ]]; then
+    echo "  --disable-motors = no"
+else
+    echo "  --disable-motors = yes"
+fi
+
+tools="$PLANT_ROOT/onDesktop/video"
+recorder="$PLANT_BIN/record_timed"
+overlay="$PLANT_BIN/overlay_video"
+mkdir -p "$PLANT_BIN" "$PLANT_TMP/swift-cache"
+export TMPDIR="$PLANT_TMP"
+if [[ ! -x "$recorder" || "$tools/record_timed.swift" -nt "$recorder" ]]; then
+    echo "Compiling record_timed"
+    swiftc -module-cache-path "$PLANT_TMP/swift-cache" -O -o "$recorder" "$tools/record_timed.swift"
+fi
+if [[ ! -x "$overlay" || "$tools/overlay_video.swift" -nt "$overlay" ]]; then
+    echo "Compiling overlay_video"
+    swiftc -module-cache-path "$PLANT_TMP/swift-cache" -O -o "$overlay" "$tools/overlay_video.swift"
+fi
+
+echo "Checking plant status"
+"$PLANT_ROOT/onDesktop/statusPlant"
+
+stamp="$(date +%Y%m%d_%H%M%S)"
+dir="$PLANT_TMP/video/$stamp"
+mkdir -p "$dir/desktop" "$dir/pi"
+echo "Video directory: $dir"
+rec_pid=""
+cleanup() {
+    if [[ -n "$rec_pid" ]] && kill -0 "$rec_pid" 2>/dev/null; then
+        kill "$rec_pid" 2>/dev/null || true
+        wait "$rec_pid" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
+
+echo "Starting camera"
+"$recorder" "$dir/raw.mp4" "$record_s" "$camera" > "$dir/record.log" 2>&1 &
+rec_pid=$!
+ready=0
+for _ in $(seq 1 75); do
+    if grep -q RECORDING "$dir/record.log"; then
+        ready=1
+        break
+    fi
+    if ! kill -0 "$rec_pid" 2>/dev/null; then
+        echo "Camera recorder exited before RECORDING" >&2
+        cat "$dir/record.log" >&2
+        exit 1
+    fi
+    sleep 0.2
+done
+if [[ "$ready" -ne 1 ]]; then
+    echo "Camera did not report RECORDING" >&2
+    cat "$dir/record.log" >&2
+    exit 1
+fi
+echo "Camera is recording"
+
+op_args=(--duration "$duration")
+if [[ -n "$speed" ]]; then
+    op_args+=(--speed "$speed")
+fi
+if [[ "$motors" -eq 0 ]]; then
+    op_args+=(--disable-motors)
+fi
+set +e
+"$PLANT_ROOT/onDesktop/runOperator" "${op_args[@]}" 2>&1 | tee "$dir/run.log"
+op_rc=${PIPESTATUS[0]}
+echo "Operator exit $op_rc"
+echo "Waiting for the camera file to finish"
+wait "$rec_pid"
+rec_rc=$?
+set -e
+rec_pid=""
+echo "Camera exit $rec_rc"
+if [[ "$rec_rc" -ne 0 ]]; then
+    echo "Camera recording failed. See $dir/record.log" >&2
+    exit "$rec_rc"
+fi
+
+report_line="$(grep -E '^REPORT ' "$dir/run.log" | tail -n 1 || true)"
+if [[ -z "$report_line" ]]; then
+    echo "No operator report. Raw video kept at $dir/raw.mp4" >&2
+    exit "${op_rc:-1}"
+fi
+op_summary="${report_line#REPORT }"
+op_summary="${op_summary#\"}"
+op_summary="${op_summary%\"}"
+op_dir="$(dirname "$op_summary")"
+cp "$op_dir/events.csv" "$op_dir/summary.json" "$op_dir/boot.json" "$op_dir/clock_calib.json" "$dir/desktop/"
+
+pi_log="$(ssh_pi "cat '$PI_CTRL_LOG'")"
+events_line="$(printf '%s\n' "$pi_log" | grep -E '^EVENTS ' | tail -n 1 || true)"
+pi_report="$(printf '%s\n' "$pi_log" | grep -E '^REPORT ' | tail -n 1 || true)"
+if [[ -z "$events_line" || -z "$pi_report" ]]; then
+    echo "Pi events or summary missing from the controller log. Raw video kept at $dir/raw.mp4" >&2
+    printf '%s\n' "$pi_log" > "$dir/pi/controller.log"
+    exit "${op_rc:-1}"
+fi
+pi_events="${events_line#EVENTS }"
+pi_events="${pi_events#\"}"
+pi_events="${pi_events%\"}"
+pi_summary="${pi_report#REPORT }"
+pi_summary="${pi_summary#\"}"
+pi_summary="${pi_summary%\"}"
+printf '%s\n' "$pi_log" > "$dir/pi/controller.log"
+scp -q "${PI_SSH}:${pi_events}" "$dir/pi/events.csv"
+scp -q "${PI_SSH}:${pi_summary}" "$dir/pi/summary.json"
+
+python3 "$tools/prepare_overlay.py" "$dir"
+preview_s="$(python3 -c 'import json,sys; rows=json.load(open(sys.argv[1]))["rows"]; print(next(r["video_s"] for r in rows if r["state"]!="WAITING"))' "$dir/overlay.json")"
+"$overlay" "$dir/raw.mp4" "$dir/overlay.json" "$dir/telemetry_preview.png" "$preview_s"
+"$overlay" "$dir/raw.mp4" "$dir/overlay.json" "$dir/telemetry.mp4"
+echo "Telemetry video: $dir/telemetry.mp4"
+echo "Preview: $dir/telemetry_preview.png"
+exit "$op_rc"
