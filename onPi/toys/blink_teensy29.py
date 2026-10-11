@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Blink Teensy pin 29 via UART: 0.4 s on, then 0.4 s off.
+"""Blink the Teensy white LED via UART: 0.4 s on, then 0.4 s off.
 
 Run on the Pi: python3 ~/plant_lineFollower/onPi/toys/blink_teensy29.py
-Requires halo_teensy_firmware revision 13 or later with UART1 support.
+Requires halo_teensy_firmware revision 16 or later with UART1 support.
 Pi GPIO14/TX (header 8) -> Teensy 0/RX1;
 Pi GPIO15/RX (header 10) <- Teensy 1/TX1; connect a common GND.
 Use 3.3 V UART, 115200 baud, 8N1; disable the Pi serial login console.
-Wire pin 29 -> 5 kohm series resistor -> LED anode; LED cathode -> GND.
+Wire pin 21 -> 5 kohm series resistor -> LED anode; LED cathode -> GND.
+The UART commands remain ON29 and OFF29; they drive pin 21.
 """
 
 import argparse
@@ -50,11 +51,11 @@ def main():
         sleep(0.5)
         port.reset_input_buffer()
         version = exchange(port, "VERSION")
-        if ("board=Teensy 4.1;" not in version or "GPIO29" not in version
-                or "LED_PIN=29;" not in version or "UART1=115200,8N1;" not in version):
-            raise RuntimeError("Install revision-13 GPIO29 UART companion firmware. Received: " + repr(version))
+        if ("board=Teensy 4.1;" not in version or "GPIO21" not in version
+                or "LED_PIN=21;" not in version or "UART1=115200,8N1;" not in version):
+            raise RuntimeError("Install revision-16 GPIO21 UART companion firmware. Received: " + repr(version))
         print(version, flush=True)
-        print("Pin 29: 0.4 s ON, 0.4 s OFF. Ctrl+C to stop.", flush=True)
+        print("Pin 21: 0.4 s ON, 0.4 s OFF. Ctrl+C to stop.", flush=True)
         try:
             count = 0
             while args.cycles == 0 or count < args.cycles:

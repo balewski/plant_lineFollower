@@ -1,0 +1,12 @@
+{
+  "bind": "auto",
+  "port": 5001,
+  "peer": "10.0.0.149",
+  "peer_port": 5000,
+  "rate": 100,
+  "freshness_ms": 100,
+  "max_pwm": 255,
+  "duration": 30,
+  "speed": 0.5,
+  "n_sigma": 2.5
+}

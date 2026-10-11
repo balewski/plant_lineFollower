@@ -1,0 +1,132 @@
+#!/bin/bash
+# Start the Pi controller on Wi-Fi, then the Mac operator. Wheels turn unless
+# --disable-motors is given. On any exit, interrupt the Pi controller.
+set -euo pipefail
+duration=30
+speed=""
+motors=1
+timing=0
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    cat << 'EOF'
+runOperator [--pi 10.0.0.149] [--duration SECONDS] [--speed 0..1] [--disable-motors] [--timingTeensyPi]
+
+Wi-Fi only (10.0.0.149). The Pi controller reads
+onPi/localControl/out/photo3_calib.latest.json. This command copies that file
+to the Mac and gives it to the operator, so both sides hash the same calibration.
+
+Wheels turn unless --disable-motors is present. That choice is passed to both
+programs. --timingTeensyPi adds the Pi-Teensy GPIO clock measurement (about 13 s, no
+wheel motion). Omit it and that measurement is skipped. Stop a run from another
+terminal with stopPlant.
+EOF
+    exit 0
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --pi) export PI_HOST="$2"; shift 2 ;;
+        --duration) duration="$2"; shift 2 ;;
+        --speed) speed="$2"; shift 2 ;;
+        --disable-motors) motors=0; shift ;;
+        --timingTeensyPi) timing=1; shift ;;
+        *) echo "Unknown option $1" >&2; exit 1 ;;
+    esac
+done
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/plant_common.sh"
+
+if [[ "$PI_HOST" != "10.0.0.149" ]]; then
+    die "The robot runs on Wi-Fi 10.0.0.149. Refusing --pi $PI_HOST."
+fi
+[[ -x "$PLANT_BIN/run_operator" ]] || die "Missing $PLANT_BIN/run_operator. Run updateBin first."
+
+echo "Checking plant status"
+"$PLANT_ROOT/onDesktop/statusPlant" --pi "$PI_HOST"
+
+echo "Copying calibration from the Pi"
+mkdir -p "$PLANT_BIN"
+scp -4 -o ConnectTimeout=8 "${PI_USER}@${PI_HOST}:$PI_CALIB" "$PLANT_BIN/photo3_calib.latest.json"
+
+remote_args=(--duration "$duration")
+if [[ "$motors" -eq 1 ]]; then
+    remote_args+=(--enable-motors)
+    echo "MOTOR OUTPUT ENABLED on both programs"
+else
+    echo "Motors disabled."
+fi
+if [[ "$timing" -eq 1 ]]; then
+    remote_args+=(--timingTeensyPi)
+    echo "Pi-Teensy GPIO timing measurement enabled"
+fi
+quoted="$(printf '%q ' "${remote_args[@]}")"
+
+echo "Starting Pi controller"
+ssh_pi "PI_SRC='$PI_SRC' PI_BIN='$PI_BIN' ARGS=$(printf '%q' "$quoted") bash -s" << 'REMOTE'
+set -euo pipefail
+mkdir -p "$PI_BIN"
+log="$PI_BIN/controller.log"
+pidfile="$PI_BIN/controller.pid"
+: > "$log"
+# ARGS is already shell-quoted by the desktop.
+# shellcheck disable=SC2086
+setsid nohup "$PI_SRC/start_from_ssh.sh" $ARGS >> "$log" 2>&1 < /dev/null &
+echo $! > "$pidfile"
+echo "STARTED $!"
+REMOTE
+
+cleanup() {
+    local status=$?
+    ssh_pi "pidfile='$PI_BIN/controller.pid'
+if [[ -f \$pidfile ]]; then
+    pid=\$(cat \$pidfile)
+    if kill -0 \$pid 2>/dev/null; then
+        kill -INT \$pid || true
+        echo 'Interrupted Pi controller'
+    fi
+fi" || true
+    exit "$status"
+}
+trap cleanup EXIT
+
+echo "Waiting for the controller to open the Teensy"
+state=PENDING
+for _ in $(seq 1 40); do
+    state="$(ssh_pi "pid=\$(cat '$PI_BIN/controller.pid'); log='$PI_BIN/controller.log'
+if ! kill -0 \$pid 2>/dev/null; then echo DEAD
+elif grep -q 'WAITING for Desktop job' \$log; then echo WAITING
+elif grep -q '^ERROR' \$log; then echo ERROR
+else echo PENDING
+fi")"
+    case "$state" in
+        WAITING) break ;;
+        DEAD|ERROR)
+            ssh_pi "tail -n 50 '$PI_BIN/controller.log'" || true
+            die "Pi controller stopped before the desktop job"
+            ;;
+    esac
+    sleep 1
+done
+[[ "$state" == "WAITING" ]] || die "Pi controller did not become ready"
+
+route="$(ssh_pi "grep 'SSH route:' '$PI_BIN/controller.log' | head -n 1")"
+pi_ip="$(printf '%s\n' "$route" | sed -n 's/.*Pi \([0-9.]*\); Desktop.*/\1/p')"
+desktop_ip="$(printf '%s\n' "$route" | sed -n 's/.*Desktop \([0-9.]*\).*/\1/p')"
+[[ "$pi_ip" == "10.0.0.149" ]] || die "Controller bound $pi_ip, expected Wi-Fi 10.0.0.149"
+[[ -n "$desktop_ip" ]] || die "Could not read the desktop address from the controller log"
+echo "UDP Pi $pi_ip:5000  Desktop $desktop_ip:5001"
+
+op_args=(
+    --bind "$desktop_ip" --peer "$pi_ip"
+    --port 5001 --peer-port 5000
+    --duration "$duration"
+    --calibration "$PLANT_BIN/photo3_calib.latest.json"
+)
+if [[ -n "$speed" ]]; then
+    op_args+=(--speed "$speed")
+fi
+if [[ "$motors" -eq 1 ]]; then
+    op_args+=(--enable-motors)
+fi
+if [[ "$timing" -eq 1 ]]; then
+    op_args+=(--timingTeensyPi)
+fi
+echo "Starting Mac operator"
+"$PLANT_BIN/run_operator" "${op_args[@]}"

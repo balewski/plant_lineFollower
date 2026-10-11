@@ -1,0 +1,70 @@
+#!/bin/bash
+# Report whether a Wi-Fi run can start. Exit 0 only when the plant is idle and ready.
+set -euo pipefail
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    echo "statusPlant [--pi 10.0.0.149]"
+    echo "Wi-Fi only. Ready means .149 answers, neither program is running,"
+    echo "Pi UART /dev/serial0 exists, and photo3_calib.latest.json is complete and valid."
+    exit 0
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --pi) export PI_HOST="$2"; shift 2 ;;
+        *) echo "Unknown option $1" >&2; exit 1 ;;
+    esac
+done
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/plant_common.sh"
+
+ready=1
+echo "Pi Wi-Fi ${PI_HOST}"
+if ssh_pi "true" 2>/dev/null; then
+    echo "  connection: up"
+else
+    echo "  connection: down"
+    echo "NOT READY"
+    exit 1
+fi
+
+remote="$(ssh_pi "python3 - '$PI_CALIB' '$PI_BIN' << 'PY'
+import json, os, sys
+calib, bin_dir = sys.argv[1], sys.argv[2]
+def alive(name):
+    pidfile = os.path.join(bin_dir, name)
+    try:
+        pid = int(open(pidfile).read().strip())
+    except (OSError, ValueError):
+        return 'not-running'
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return 'not-running'
+    return 'running pid %d' % pid
+print('controller:', alive('controller.pid'))
+print('uart:', 'present' if os.path.exists('/dev/serial0') else 'missing')
+print('teensy-usb:', 'present' if os.path.exists('/dev/ttyACM0') else 'missing')
+try:
+    report = json.load(open(calib))
+except OSError as exc:
+    print('calibration: missing', exc)
+    sys.exit(0)
+print('calibration: status=%s valid=%s started=%s' % (
+    report.get('status'), report.get('valid'), report.get('started')))
+PY")"
+printf '%s\n' "$remote" | sed 's/^/  /'
+printf '%s\n' "$remote" | grep -q 'controller: not-running' || ready=0
+printf '%s\n' "$remote" | grep -q 'uart: present' || ready=0
+printf '%s\n' "$remote" | grep -q 'calibration: status=complete valid=True' || ready=0
+
+if pgrep -f "$PLANT_BIN/run_operator" >/dev/null 2>&1; then
+    echo "  mac operator: running"
+    ready=0
+else
+    echo "  mac operator: not-running"
+fi
+
+if [[ "$ready" -eq 1 ]]; then
+    echo "READY"
+    exit 0
+fi
+echo "NOT READY"
+exit 1
