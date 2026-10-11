@@ -1,7 +1,7 @@
 {
   "bind": "auto",
   "port": 5001,
-  "peer": "10.0.0.149",
+  "peer": "10.0.0.20",
   "peer_port": 5000,
   "rate": 100,
   "freshness_ms": 100,

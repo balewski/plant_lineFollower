@@ -8,9 +8,9 @@ motors=1
 timing=0
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
     cat << 'EOF'
-runOperator [--pi 10.0.0.149] [--duration SECONDS] [--speed 0..1] [--disable-motors] [--timingTeensyPi]
+runOperator [--pi 10.0.0.20] [--duration SECONDS] [--speed 0..1] [--disable-motors] [--timingTeensyPi]
 
-Wi-Fi only (10.0.0.149). The Pi controller reads
+Wi-Fi only (10.0.0.20). The Pi controller reads
 onPi/localControl/out/photo3_calib.latest.json. This command copies that file
 to the Mac and gives it to the operator, so both sides hash the same calibration.
 
@@ -33,8 +33,8 @@ while [[ $# -gt 0 ]]; do
 done
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/plant_common.sh"
 
-if [[ "$PI_HOST" != "10.0.0.149" ]]; then
-    die "The robot runs on Wi-Fi 10.0.0.149. Refusing --pi $PI_HOST."
+if [[ "$PI_HOST" != "10.0.0.20" ]]; then
+    die "The robot runs on Wi-Fi 10.0.0.20. Refusing --pi $PI_HOST."
 fi
 [[ -x "$PLANT_BIN/run_operator" ]] || die "Missing $PLANT_BIN/run_operator. Run updateBin first."
 
@@ -109,7 +109,7 @@ done
 route="$(ssh_pi "grep 'SSH route:' '$PI_BIN/controller.log' | head -n 1")"
 pi_ip="$(printf '%s\n' "$route" | sed -n 's/.*Pi \([0-9.]*\); Desktop.*/\1/p')"
 desktop_ip="$(printf '%s\n' "$route" | sed -n 's/.*Desktop \([0-9.]*\).*/\1/p')"
-[[ "$pi_ip" == "10.0.0.149" ]] || die "Controller bound $pi_ip, expected Wi-Fi 10.0.0.149"
+[[ "$pi_ip" == "10.0.0.20" ]] || die "Controller bound $pi_ip, expected Wi-Fi 10.0.0.20"
 [[ -n "$desktop_ip" ]] || die "Could not read the desktop address from the controller log"
 echo "UDP Pi $pi_ip:5000  Desktop $desktop_ip:5001"
 

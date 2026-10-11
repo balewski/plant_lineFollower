@@ -3,7 +3,7 @@
 # Aborts before compiling when the Teensy USB cable is not on this Mac.
 set -euo pipefail
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-    echo "makeBin [--pi 10.0.0.149]"
+    echo "makeBin [--pi 10.0.0.20]"
     echo "Compile both programs and flash the Teensy through the Pi USB port."
     echo "The Teensy stays on the robot: UART /dev/serial0, programming USB /dev/ttyACM0."
     exit 0

@@ -2,7 +2,7 @@
 
 Recorded 2026-10-04.
 
-The Pi (`wlan0`, `10.0.0.149`) is on the ASUS at `10.0.0.1`, network `10.0.0.0/24`.
+The Pi (`wlan0`, `10.0.0.20`) is on the ASUS at `10.0.0.1`, network `10.0.0.0/24`.
 
 `/home/pi/plant_lineFollower/config/asus_wan_route.sh` checks whether the ASUS can reach the public internet.
 
