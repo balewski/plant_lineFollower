@@ -2,8 +2,13 @@
 
 ## 1. Git & Version Control Policy
 - **NO `git commit` or `git push`**: Under no circumstances should the agent execute `git commit` or `git push`. The user handles all commits and pushes to remote repositories.
-- **`git add` Allowed**: The agent is permitted to stage files using `git add` when appropriate.
-- **Read-only Git Inspection**: Commands such as `git status`, `git diff`, and `git log` are permitted.
+- **Platform Selection by Task Type (Single-Platform Modification & Staging Policy)**:
+  - **DO NOT modify or `git add` the same file on both Mac and `pi2`.**
+  - **Circuit / Hardware Execution Tasks &rarr; `pi2` Only**: If a task is related to running, testing, or calibrating hardware/circuits on the Raspberry Pi, modify files **only in the repo on `pi2`** (`/home/pi/plant_lineFollower/`).
+  - **Documentation / TeX / CAD Tasks &rarr; Mac Only**: If a task is documentation-oriented (e.g., updating `.tex` or `.tikz` files in `docs/`, or CAD/slicing on Mac), modify files **only in the Mac repo** (`/Users/balewski/shared_volumes/2026_plant_lineFollower/`).
+  - **Ambiguous Tasks &rarr; Ask the User**: If it is not clear whether changes should be made on Mac or on `pi2`, explicitly ask the user where the changes should be made before editing any files.
+  - Depending on the chosen platform, update and stage files **only on the platform where the work is taking place**. Never stage or commit the same file in parallel on both machines; the user handles git synchronization between Mac and Pi.
+- **Read-only Git Inspection**: Commands such as `git status`, `git diff`, and `git log` are permitted on both platforms.
 
 ---
 
@@ -20,7 +25,7 @@
 ---
 
 ## 3. Remote Raspberry Pi Environment
-- **Host**: SSH as `pi2` with key `~/.ssh/pi_robot_ed25519`. Hosts in `~/.ssh/config`: `pi2` `10.0.0.20`, `pi2-asus-eth` `10.0.0.120`, `pi2-home-eth` `192.168.68.220`.
+- **Host**: SSH as `pi2` with key `~/.ssh/pi2_robot_ed25519`. Hosts in `~/.ssh/config`: `pi2` `10.0.0.20`, `pi2-asus-eth` `10.0.0.120`, `pi2-home-eth` `192.168.68.220`.
 - **Fixed IPs**:
   - A, Wi-Fi (`wlan0`, `asus-robot`): `10.0.0.20`. Robot runs use this path only.
   - B, Ethernet to ASUS (`eth0`, `asus-ethernet`): `10.0.0.120`

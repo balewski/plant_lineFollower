@@ -3,7 +3,7 @@
 set -e
 
 document_map=(
-1:line_folower
+1:line_follower
 2:line_follower_summary
 )
 

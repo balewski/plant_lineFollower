@@ -17,18 +17,22 @@ Figure~\ref{fig:laptop-robot-lan} shows the three ways Desktop reaches Pi. All a
 \label{tab:current-network}
 \begin{tabular}{@{}lll@{}}
 \toprule
-Path & pi2 address & Connection \\
+Path & pi2 Address & Connection Details \\
 \midrule
-A & \texttt{10.0.0.20} & Wi-Fi only. Pi Wi-Fi to ASUS AirBears 3. Desktop Ethernet \texttt{10.0.0.2}. \\
-B & \texttt{10.0.0.120} & Pi Ethernet cable to an ASUS LAN port. Desktop Ethernet \texttt{10.0.0.2}. \\
-C & \texttt{192.168.68.220} & Pi Ethernet cable to the home router. Desktop Wi-Fi \texttt{192.168.68.107}. \\
+A & \texttt{10.0.0.20} & Wi-Fi only (to ASUS \texttt{AirBears 3}). Desktop on ASUS Ethernet \texttt{10.0.0.2}. \\
+B & \texttt{10.0.0.120} & Ethernet cable to ASUS LAN port. Desktop on ASUS Ethernet \texttt{10.0.0.2}. \\
+C & \texttt{192.168.68.220} & Ethernet cable to Home router. Desktop on Home Wi-Fi \texttt{192.168.68.107}. \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-ASUS is \texttt{10.0.0.1}. The home router is \texttt{192.168.68.1}.
+\subsection{Network Profiles and Routing}
+The host name is \texttt{pi2} and the login user is \texttt{pi}. All subnet masks are \texttt{/24}.
 
-\subsection{Automatic Wi-Fi Connection and Internet Routing}
-The host name is \texttt{pi2}. Wi-Fi uses a 2.4\,GHz Realtek RTL8188CUS USB adapter. The \texttt{asus-robot} profile is path A: autoconnect priority 200, address \texttt{10.0.0.20/24}, with no default route and no DNS. The spare home profile \texttt{robot-wifi} remains available at \texttt{192.168.68.126/24} with autoconnect priority 10. \texttt{select\_pi\_ethernet.sh} chooses the Ethernet profile from the cable: \texttt{asus-ethernet} at \texttt{10.0.0.120/24} when the ASUS answers, and \texttt{Wired connection 1} at \texttt{192.168.68.220/24} when the home router answers. Moving the cable among paths A, B and C selected the matching address. A reboot was not part of that check.
+\begin{itemize}
+\item \textbf{Path A (\texttt{asus-robot})}: Wi-Fi connection to the ASUS router at \texttt{10.0.0.20/24} (gateway \texttt{10.0.0.1}).
+\item \textbf{Path B (\texttt{asus-ethernet})}: Ethernet connection to the ASUS router at \texttt{10.0.0.120/24} (gateway \texttt{10.0.0.1}).
+\item \textbf{Path C (\texttt{Wired connection 1})}: Ethernet connection to the home router at \texttt{192.168.68.220/24} (gateway and DNS \texttt{192.168.68.1}).
+\end{itemize}
 
-Desktop keeps its Internet default route and DNS on home Wi-Fi. ASUS works from its own power supply without a laptop attached; no upstream Internet is required for local Pi communication. Another laptop can join the normal \texttt{AirBears 3} SSID and reach Pi, provided clients are not isolated. The ASUS USB ports are not the laptop's network connection. A laptop using only ASUS Wi-Fi has no Internet through this isolated router unless a separate upstream arrangement is added.
+The script \texttt{select\_pi\_ethernet.sh} detects whether the Ethernet cable is connected to the ASUS router or the home router and activates \texttt{asus-ethernet} or \texttt{Wired connection 1} accordingly. The ASUS network operates isolated without requiring upstream Internet, while the home router provides direct Internet access.

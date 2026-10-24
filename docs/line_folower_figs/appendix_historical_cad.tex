@@ -45,28 +45,28 @@ The earlier 450--550\,g whole-robot mass target remains a planning target, not a
 
 \subsection{September 15 CAD Visualization}
 \label{sec:historical-cad-visualization}
-Figure~\ref{fig:mechanical_layout} uses the assembled and exploded views exported from the September 15 overview CAD. Lower-deck parts are gray, the sensor head/T joints purple, front pillars orange, aft pillars blue, and the upper deck teal. Dark objects are illustrative purchased hardware/electronics. The CAD check found no positive-volume overlaps between the 16 plastic components; this does not validate unmodeled hardware fit or optical operating height.
+Figure~\ref{fig:mechanical_layout} uses the assembled and exploded views exported from \texttt{main\_overview.FCStd} in \path{2026_plant_3Dprint_designs/lineFollower}. Lower-deck parts are dark teal, pillars gold, upper deck orange, sensor mount and electronics green, wheels and clamps dark, and battery/Pi mockups blue and silver.
 
 \begin{figure}[H]
 \centering
 \begin{minipage}[c]{0.55\linewidth}
 \centering
-\includegraphics[width=\linewidth,trim=390bp 150bp 410bp 250bp,clip]{figures/cad_sep15_assembled.png}
+\includegraphics[width=\linewidth]{figures/cad_sep24_assembled.png}
 \par\small (a) Assembled robot
 \end{minipage}\hfill
 \begin{minipage}[c]{0.42\linewidth}
 \centering
-\includegraphics[width=\linewidth,trim=490bp 120bp 540bp 200bp,clip]{figures/cad_sep15_exploded.png}
+\includegraphics[width=\linewidth]{figures/cad_sep24_exploded.png}
 \par\small (b) Exploded arrangement
 \end{minipage}
-\caption{September 15 CAD assembly, replacing the earlier circular-chassis concept. Both views show the same components; exploded spacing is illustrative and the two views use different scales. These images are inspection views, not print layouts.}
+\caption{CAD assembly from \texttt{main\_overview.FCStd} in \texttt{2026\_plant\_3Dprint\_designs/lineFollower}. Both views show the same components; exploded spacing is illustrative and the two views use different scales. These images are inspection views, not print layouts.}
 \label{fig:mechanical_layout}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[height=0.40\textheight,trim=500bp 140bp 500bp 140bp,clip]{figures/cad_sep15_top.png}
-\caption{September 15 top view, with the sensor head toward the top. The upper deck shows the Teensy holder and cable clamp, Power A/B areas, ammeter opening on the left, and inclined driver supports on the right. The lower Pi/battery mounting features are beneath this level. Marked rectangles are placement references, not complete electronics models.}
+\includegraphics[height=0.38\textheight]{figures/cad_sep24_top.png}
+\caption{Top view from \texttt{main\_overview.FCStd} in \texttt{2026\_plant\_3Dprint\_designs/lineFollower}, with the sensor head toward the top. The upper deck shows the Teensy holder and retaining clamp, Power A/B mounting areas, ammeter opening on the left, and inclined driver supports on the right. The lower Pi and battery mounting features are beneath this level.}
 \label{fig:cad-top}
 \end{figure}
 
